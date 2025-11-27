@@ -131,6 +131,41 @@ body {
   content: attr(data-placeholder);
 }
 
+/* Task list styles */
+.novel-editor .ProseMirror ul[data-type="taskList"] {
+  @apply list-none p-0;
+}
+
+.novel-editor .ProseMirror ul[data-type="taskList"] li {
+  @apply flex gap-2 items-start;
+}
+
+.novel-editor .ProseMirror ul[data-type="taskList"] li > label {
+  @apply flex-shrink-0 mt-1;
+}
+
+.novel-editor .ProseMirror ul[data-type="taskList"] li > label > input {
+  @apply w-4 h-4 accent-sage-500 cursor-pointer;
+}
+
+.novel-editor .ProseMirror ul[data-type="taskList"] li > div {
+  @apply flex-1;
+}
+
+.novel-editor .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div {
+  @apply line-through text-gray-500;
+}
+
+/* Tippy.js tooltip styles */
+.tippy-box[data-theme~='slash-menu'] {
+  background: transparent;
+  padding: 0;
+}
+
+.tippy-box[data-theme~='slash-menu'] .tippy-content {
+  padding: 0;
+}
+
 /* Animation utilities */
 @keyframes fadeIn {
   from {

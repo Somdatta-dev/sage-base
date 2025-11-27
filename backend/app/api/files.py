@@ -45,10 +45,13 @@ async def upload_file(
     async with aiofiles.open(full_path, "wb") as f:
         await f.write(content)
     
+    # Build absolute URL for the frontend
+    base_url = settings.API_DOMAIN.rstrip("/")
+    
     return {
         "filename": file.filename,
         "path": relative_path,
-        "url": f"/uploads/{relative_path}",
+        "url": f"{base_url}/uploads/{relative_path}",
         "size": len(content),
         "content_type": file.content_type,
     }
