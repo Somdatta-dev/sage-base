@@ -4,12 +4,12 @@ import { useEditor, EditorContent, type JSONContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
-import Image from "@tiptap/extension-image";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import { useEffect } from "react";
 import { EditorToolbar } from "./EditorToolbar";
 import { SlashCommand } from "./SlashCommand";
+import { ResizableImage } from "./ResizableImage";
 
 interface PageEditorProps {
   content: Record<string, unknown> | null;
@@ -46,11 +46,7 @@ export function PageEditor({
           class: "text-sage-400 underline hover:text-sage-300 cursor-pointer",
         },
       }),
-      Image.configure({
-        HTMLAttributes: {
-          class: "rounded-lg max-w-full",
-        },
-      }),
+      ResizableImage,
       TaskList.configure({
         HTMLAttributes: { class: "not-prose" },
       }),

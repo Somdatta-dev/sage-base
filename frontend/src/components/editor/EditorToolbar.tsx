@@ -39,7 +39,14 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       if (input.files?.length) {
         try {
           const response = await filesApi.upload(input.files[0]);
-          editor.chain().focus().setImage({ src: response.url }).run();
+          editor
+            .chain()
+            .focus()
+            .insertContent({
+              type: "image",
+              attrs: { src: response.url },
+            })
+            .run();
         } catch (error) {
           console.error("Failed to upload image:", error);
         }

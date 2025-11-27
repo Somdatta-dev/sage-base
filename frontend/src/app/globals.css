@@ -118,6 +118,56 @@ body {
   @apply max-w-full h-auto rounded-lg;
 }
 
+/* Image resize handles */
+.novel-editor .ProseMirror .tiptap-resize-container {
+  @apply relative inline-block;
+}
+
+.novel-editor .ProseMirror .tiptap-resize-wrapper {
+  @apply relative;
+}
+
+.novel-editor .ProseMirror .tiptap-resize-handle {
+  @apply absolute w-3 h-3 bg-sage-500 border-2 border-white rounded-sm;
+  z-index: 10;
+}
+
+.novel-editor .ProseMirror .tiptap-resize-handle[data-direction="top-left"] {
+  @apply top-0 left-0 cursor-nwse-resize -translate-x-1/2 -translate-y-1/2;
+}
+
+.novel-editor .ProseMirror .tiptap-resize-handle[data-direction="top-right"] {
+  @apply top-0 right-0 cursor-nesw-resize translate-x-1/2 -translate-y-1/2;
+}
+
+.novel-editor .ProseMirror .tiptap-resize-handle[data-direction="bottom-left"] {
+  @apply bottom-0 left-0 cursor-nesw-resize -translate-x-1/2 translate-y-1/2;
+}
+
+.novel-editor .ProseMirror .tiptap-resize-handle[data-direction="bottom-right"] {
+  @apply bottom-0 right-0 cursor-nwse-resize translate-x-1/2 translate-y-1/2;
+}
+
+.novel-editor .ProseMirror .tiptap-resize-handle[data-direction="top"] {
+  @apply top-0 left-1/2 cursor-ns-resize -translate-x-1/2 -translate-y-1/2;
+}
+
+.novel-editor .ProseMirror .tiptap-resize-handle[data-direction="bottom"] {
+  @apply bottom-0 left-1/2 cursor-ns-resize -translate-x-1/2 translate-y-1/2;
+}
+
+.novel-editor .ProseMirror .tiptap-resize-handle[data-direction="left"] {
+  @apply top-1/2 left-0 cursor-ew-resize -translate-x-1/2 -translate-y-1/2;
+}
+
+.novel-editor .ProseMirror .tiptap-resize-handle[data-direction="right"] {
+  @apply top-1/2 right-0 cursor-ew-resize translate-x-1/2 -translate-y-1/2;
+}
+
+.novel-editor .ProseMirror .is-resizing {
+  @apply opacity-75;
+}
+
 .novel-editor .ProseMirror hr {
   @apply border-gray-700 my-8;
 }

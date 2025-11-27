@@ -132,7 +132,14 @@ const commands: CommandItem[] = [
           );
           const data = await res.json();
           if (data.url) {
-            editor.chain().focus().setImage({ src: data.url }).run();
+            editor
+              .chain()
+              .focus()
+              .insertContent({
+                type: "image",
+                attrs: { src: data.url },
+              })
+              .run();
           }
         } catch (err) {
           console.error("Failed to upload image:", err);
