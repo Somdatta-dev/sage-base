@@ -1,0 +1,89 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: sagebase-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sagebase}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sagebase_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-sagebase}
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sagebase}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sagebase_network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: sagebase-qdrant
+    restart: unless-stopped
+    ports:
+      - "6337:6333"
+      - "6338:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    networks:
+      - sagebase_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sagebase-backend
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sagebase}:${POSTGRES_PASSWORD:-sagebase_secret}@postgres:5432/${POSTGRES_DB:-sagebase}
+      SECRET_KEY: ${SECRET_KEY:-your-super-secret-key-change-in-production}
+      API_DOMAIN: ${API_DOMAIN:-http://localhost:8787}
+      WEBSITE_DOMAIN: ${WEBSITE_DOMAIN:-http://localhost:3737}
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      UPLOAD_DIR: /app/uploads
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@sagebase.com}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-Admin123!}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    networks:
+      - sagebase_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${API_DOMAIN:-http://localhost:8787}
+    container_name: sagebase-frontend
+    restart: unless-stopped
+    ports:
+      - "3737:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${API_DOMAIN:-http://localhost:8787}
+    depends_on:
+      - backend
+    networks:
+      - sagebase_network
+
+networks:
+  sagebase_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  uploads_data:
