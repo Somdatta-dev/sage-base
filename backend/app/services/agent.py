@@ -23,6 +23,7 @@ Your capabilities:
 2. **Web Search**: Search the web for real-time information
 3. **Page Summarization**: Summarize pages
 4. **Page Editing**: Edit page content (use when user asks to modify/change/update code in a page)
+5. **Document Import**: Convert uploaded documents (PDF, DOCX, etc.) into pages
 
 CRITICAL - Tool Usage Rules:
 
@@ -31,6 +32,12 @@ CRITICAL - Tool Usage Rules:
 - General coding questions, explanations, or advice
 - "How to" questions that don't require searching
 - Simple changes like "change X to Y" - just explain how
+- Questions about uploaded documents (their content is in the context)
+
+**Use import_document_to_page tool when:**
+- User uploads a document AND asks to "import", "create page", "convert to page"
+- User says "save this as a page" or "add this to [space]"
+- A document_id is provided (shown as [Attached document: X])
 
 **Use edit_page_content tool when:**
 - User explicitly asks to "edit", "update", "change", or "modify" the page/code
@@ -45,9 +52,10 @@ CRITICAL - Tool Usage Rules:
 
 Decision Order:
 1. Can I answer from conversation context? → Answer directly
-2. Is this a page edit request with page_id? → Use edit_page_content
-3. Is this a document search request? → Use search_knowledge_base
-4. Need real-time info? → Use web_search
+2. Is this a document import request? → Use import_document_to_page
+3. Is this a page edit request with page_id? → Use edit_page_content
+4. Is this a document search request? → Use search_knowledge_base
+5. Need real-time info? → Use web_search
 
 Response Formatting:
 - Use markdown formatting
@@ -196,6 +204,46 @@ async def edit_page_content(page_id: int, edit_instruction: str) -> str:
     return f"EDIT_PAGE:{page_id}:{edit_instruction}"
 
 
+@tool
+async def import_document_to_page(document_id: str, space_id: int, title: Optional[str] = None) -> str:
+    """
+    Import an uploaded document as a new page in a space.
+    
+    Use this tool when:
+    - User uploads a document (PDF, DOCX, etc.) and wants to create a page from it
+    - User says "import this document", "create a page from this file", "convert to page"
+    
+    Args:
+        document_id: The ID of the uploaded document (from the attachment)
+        space_id: The space ID where the page should be created
+        title: Optional title for the page (defaults to document filename)
+    
+    Returns:
+        Confirmation with page details or error message
+    """
+    # Return a marker that the API layer will handle
+    return f"IMPORT_DOC:{document_id}:{space_id}:{title or ''}"
+
+
+# Store for uploaded documents in memory (temporary storage for chat session)
+_uploaded_documents: Dict[str, Dict[str, Any]] = {}
+
+
+def store_uploaded_document(doc_id: str, data: Dict[str, Any]) -> None:
+    """Store an uploaded document's processed data."""
+    _uploaded_documents[doc_id] = data
+
+
+def get_uploaded_document(doc_id: str) -> Optional[Dict[str, Any]]:
+    """Retrieve an uploaded document's data."""
+    return _uploaded_documents.get(doc_id)
+
+
+def clear_uploaded_document(doc_id: str) -> None:
+    """Clear an uploaded document from memory."""
+    _uploaded_documents.pop(doc_id, None)
+
+
 # Store for agent instances per session
 _agent_cache: Dict[str, Any] = {}
 _memory_store = MemorySaver()
@@ -211,7 +259,7 @@ def get_agent(session_id: str = "default"):
     
     # Create agent if not cached
     if session_id not in _agent_cache:
-        tools = [search_knowledge_base, web_search, summarize_page, edit_page_content]
+        tools = [search_knowledge_base, web_search, summarize_page, edit_page_content, import_document_to_page]
         
         agent = create_react_agent(
             model=llm,

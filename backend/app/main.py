@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 
-from app.api import auth, users, spaces, pages, files, search, ai
+from app.api import auth, users, spaces, pages, files, search, ai, documents
 from app.core.config import settings
 from app.core.init_db import init_db
 
@@ -49,6 +49,7 @@ app.include_router(pages.router, prefix="/api/pages", tags=["Pages"])
 app.include_router(files.router, prefix="/api/files", tags=["Files"])
 app.include_router(search.router, prefix="/api/search", tags=["Search"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
+app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 
 
 @app.get("/api/health")

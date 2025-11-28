@@ -14,6 +14,10 @@ import {
   Trash2,
   MessageCircle,
   ChevronLeft,
+  Paperclip,
+  X,
+  Upload,
+  FileUp,
 } from "lucide-react";
 import { useAIStore } from "@/lib/store";
 import { aiApi } from "@/lib/api";
@@ -24,6 +28,16 @@ interface Message {
   content: string;
   toolCalls?: Array<{ name: string; args: Record<string, unknown> }>;
   timestamp: Date;
+  attachment?: {
+    documentId: string;
+    filename: string;
+  };
+}
+
+interface AttachedDocument {
+  documentId: string;
+  filename: string;
+  preview: string;
 }
 
 export function AISidebar() {
@@ -39,8 +53,11 @@ export function AISidebar() {
   } = useAIStore();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [attachedDoc, setAttachedDoc] = useState<AttachedDocument | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (aiSidebarOpen && inputRef.current) {
@@ -52,6 +69,40 @@ export function AISidebar() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const result = await aiApi.uploadDocument(file);
+      setAttachedDoc({
+        documentId: result.document_id,
+        filename: result.filename,
+        preview: result.markdown_preview,
+      });
+    } catch (error) {
+      console.error("Failed to upload document:", error);
+      // Show error in chat
+      addMessage({
+        id: Date.now().toString(),
+        role: "assistant",
+        content: `❌ Failed to upload document: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date(),
+      });
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const clearAttachment = () => {
+    setAttachedDoc(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
@@ -61,14 +112,26 @@ export function AISidebar() {
       role: "user",
       content: input.trim(),
       timestamp: new Date(),
+      attachment: attachedDoc ? {
+        documentId: attachedDoc.documentId,
+        filename: attachedDoc.filename,
+      } : undefined,
     };
 
     addMessage(userMessage);
+    const currentInput = input.trim();
+    const currentDocId = attachedDoc?.documentId;
     setInput("");
+    setAttachedDoc(null); // Clear attachment after sending
     setLoading(true);
 
     try {
-      const response = await aiApi.chat(input.trim(), pageContext?.spaceId, pageContext?.pageId);
+      const response = await aiApi.chat(
+        currentInput, 
+        pageContext?.spaceId, 
+        pageContext?.pageId,
+        currentDocId
+      );
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -83,6 +146,11 @@ export function AISidebar() {
       // If AI edited a page, trigger reload
       if (response.page_edited) {
         triggerPageReload();
+      }
+      
+      // If AI created a page from document, could navigate or show link
+      if (response.page_created && response.created_page_slug) {
+        // Page was created - the response message will contain the details
       }
     } catch {
       const errorMessage: Message = {
@@ -158,6 +226,10 @@ export function AISidebar() {
         return <Globe className="w-3 h-3" />;
       case "summarize_page":
         return <FileText className="w-3 h-3" />;
+      case "edit_page_content":
+        return <FileText className="w-3 h-3" />;
+      case "import_document_to_page":
+        return <FileUp className="w-3 h-3" />;
       default:
         return <Sparkles className="w-3 h-3" />;
     }
@@ -389,6 +461,13 @@ export function AISidebar() {
                               ))}
                             </div>
                           )}
+                          {/* Attachment indicator for user messages */}
+                          {message.attachment && (
+                            <div className="flex items-center gap-1 mb-1 text-xs opacity-80">
+                              <FileUp className="w-3 h-3" />
+                              <span className="truncate max-w-[150px]">{message.attachment.filename}</span>
+                            </div>
+                          )}
                           {message.role === "assistant" ? (
                             <div className="text-sm prose prose-sm prose-invert max-w-none prose-p:my-2 prose-p:leading-relaxed prose-headings:mt-4 prose-headings:mb-2 prose-headings:font-semibold prose-h2:text-base prose-h3:text-sm prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-code:bg-[#373737] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-purple-300 prose-code:text-xs prose-pre:bg-[#1a1a1a] prose-pre:border prose-pre:border-[#373737] prose-pre:rounded-lg prose-strong:text-purple-300 prose-strong:font-semibold first:prose-headings:mt-0">
                               <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -432,14 +511,83 @@ export function AISidebar() {
                 transition={{ delay: 0.2 }}
                 className="p-3 border-t border-[#373737]"
               >
+                {/* Attached Document Preview */}
+                <AnimatePresence>
+                  {attachedDoc && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="mb-2 p-2 bg-[#2d2d2d] border border-purple-500/30 rounded-lg"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-purple-400" />
+                          <span className="text-xs text-[#e3e3e3] truncate max-w-[200px]">
+                            {attachedDoc.filename}
+                          </span>
+                        </div>
+                        <button
+                          onClick={clearAttachment}
+                          className="p-1 hover:bg-[#373737] rounded text-[#9b9b9b] hover:text-[#e3e3e3]"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <p className="text-xs text-[#6b6b6b] mt-1 line-clamp-2">
+                        {attachedDoc.preview.slice(0, 100)}...
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Uploading indicator */}
+                <AnimatePresence>
+                  {uploading && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="mb-2 p-2 bg-[#2d2d2d] rounded-lg flex items-center gap-2"
+                    >
+                      <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                      <span className="text-xs text-[#9b9b9b]">Processing document...</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <form onSubmit={handleSubmit} className="flex gap-2">
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.docx,.pptx,.xlsx,.html,.md,.txt"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  
+                  {/* Attachment button */}
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={!aiEnabled || loading || uploading}
+                    className="px-2 py-2 bg-[#2d2d2d] hover:bg-[#373737] border border-[#373737] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-[#9b9b9b] hover:text-[#e3e3e3] transition-all"
+                    title="Attach document (PDF, DOCX, etc.)"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </motion.button>
+
                   <textarea
                     ref={inputRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={
-                      aiEnabled
+                      attachedDoc
+                        ? "Ask about this document or say 'import to page'..."
+                        : aiEnabled
                         ? "Ask anything..."
                         : "Configure OPENAI_API_KEY"
                     }

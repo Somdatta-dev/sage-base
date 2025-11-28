@@ -73,6 +73,10 @@ interface AIMessage {
   content: string;
   toolCalls?: Array<{ name: string; args: Record<string, unknown> }>;
   timestamp: Date;
+  attachment?: {
+    documentId: string;
+    filename: string;
+  };
 }
 
 interface PageContext {

@@ -181,6 +181,16 @@ interface AIChatResponse {
   tool_calls: Array<{ name: string; args: Record<string, unknown> }>;
   page_edited: boolean;
   edited_page_id: number | null;
+  page_created: boolean;
+  created_page_id: number | null;
+  created_page_slug: string | null;
+}
+
+interface DocumentUploadResponse {
+  document_id: string;
+  filename: string;
+  markdown_preview: string;
+  success: boolean;
 }
 
 interface AIStatusResponse {
@@ -202,7 +212,7 @@ interface AIEditTextResponse {
 export const aiApi = {
   status: (): Promise<AIStatusResponse> => fetchWithAuth("/api/ai/status"),
   
-  chat: (message: string, spaceId?: number, pageId?: number, sessionId: string = "default"): Promise<AIChatResponse> =>
+  chat: (message: string, spaceId?: number, pageId?: number, documentId?: string, sessionId: string = "default"): Promise<AIChatResponse> =>
     fetchWithAuth("/api/ai/chat", {
       method: "POST",
       body: JSON.stringify({
@@ -210,8 +220,30 @@ export const aiApi = {
         session_id: sessionId,
         space_id: spaceId,
         page_id: pageId,
+        document_id: documentId,
       }),
     }),
+  
+  uploadDocument: async (file: File): Promise<DocumentUploadResponse> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    const token = useAuthStore.getState().token;
+    const response = await fetch(`${API_BASE}/api/ai/upload-document`, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Failed to upload document");
+    }
+    
+    return response.json();
+  },
   
   summarize: (pageId: number): Promise<AISummarizeResponse> =>
     fetchWithAuth("/api/ai/summarize", {

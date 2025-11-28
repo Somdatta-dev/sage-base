@@ -2,25 +2,33 @@
 AI API endpoints for chat and summarization.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Optional, List
 import json
+import uuid
+import os
 
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
-from app.models.page import Page
+from app.models.page import Page, PageStatus
+from app.models.space import Space
 from app.services.agent import (
     chat_with_agent,
     summarize_page_content,
     edit_text_with_ai,
     is_ai_configured,
     clear_session,
+    store_uploaded_document,
+    get_uploaded_document,
+    clear_uploaded_document,
 )
+from app.services.document_processor import get_document_processor
+from slugify import slugify
 
 router = APIRouter()
 
@@ -30,6 +38,7 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = "default"
     space_id: Optional[int] = None
     page_id: Optional[int] = None  # Current page context for edits
+    document_id: Optional[str] = None  # Attached document ID
 
 
 class ChatResponse(BaseModel):
@@ -37,6 +46,16 @@ class ChatResponse(BaseModel):
     tool_calls: List[dict]
     page_edited: bool = False
     edited_page_id: Optional[int] = None
+    page_created: bool = False
+    created_page_id: Optional[int] = None
+    created_page_slug: Optional[str] = None
+
+
+class DocumentUploadResponse(BaseModel):
+    document_id: str
+    filename: str
+    markdown_preview: str
+    success: bool
 
 
 class SummarizeRequest(BaseModel):
@@ -74,6 +93,68 @@ async def get_ai_status(
     return AIStatusResponse(**is_ai_configured())
 
 
+# Supported file extensions for document upload
+SUPPORTED_DOC_EXTENSIONS = {'.pdf', '.docx', '.pptx', '.xlsx', '.html', '.md', '.txt'}
+
+
+@router.post("/upload-document", response_model=DocumentUploadResponse)
+async def upload_document_for_chat(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Upload a document for AI chat context.
+    
+    The document is processed and stored temporarily for the chat session.
+    User can then ask questions about it or import it as a page.
+    """
+    # Validate file extension
+    ext = os.path.splitext(file.filename or '')[1].lower()
+    if ext not in SUPPORTED_DOC_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {ext}. Supported: {', '.join(SUPPORTED_DOC_EXTENSIONS)}"
+        )
+    
+    # Read and process the document
+    content = await file.read()
+    
+    if len(content) > 50 * 1024 * 1024:  # 50MB limit
+        raise HTTPException(status_code=400, detail="File too large. Maximum size: 50MB")
+    
+    processor = get_document_processor()
+    result = await processor.process_uploaded_file(content, file.filename or 'document')
+    
+    if not result['success']:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process document: {result.get('error', 'Unknown error')}"
+        )
+    
+    # Generate a unique document ID
+    doc_id = str(uuid.uuid4())
+    
+    # Store the processed document
+    store_uploaded_document(doc_id, {
+        'filename': file.filename,
+        'markdown': result['markdown'],
+        'text': result['text'],
+        'tables': result['tables'],
+        'metadata': result['metadata'],
+        'user_id': current_user.id,
+    })
+    
+    # Create a preview (first 500 chars)
+    preview = result['markdown'][:500] + ('...' if len(result['markdown']) > 500 else '')
+    
+    return DocumentUploadResponse(
+        document_id=doc_id,
+        filename=file.filename or 'document',
+        markdown_preview=preview,
+        success=True,
+    )
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
@@ -88,6 +169,7 @@ async def chat(
     - Search the web using Tavily
     - Summarize pages
     - Edit page content
+    - Import documents as pages
     """
     status = is_ai_configured()
     if not status["chat_enabled"]:
@@ -99,10 +181,26 @@ async def chat(
     # Create a unique session ID per user
     session_id = f"{current_user.id}_{request.session_id}"
     
-    # Add page context to message if available
+    # Build message with context
     message = request.message
+    
+    # Add page context if available
     if request.page_id:
-        message = f"[Current page ID: {request.page_id}]\n\n{request.message}"
+        message = f"[Current page ID: {request.page_id}]\n\n{message}"
+    
+    # Add document context if available
+    if request.document_id:
+        doc_data = get_uploaded_document(request.document_id)
+        if doc_data:
+            # Include document content in context (truncated for token limits)
+            doc_content = doc_data['markdown'][:4000]
+            message = f"""[Attached document: {request.document_id}]
+[Document filename: {doc_data['filename']}]
+[Document content preview:]
+{doc_content}
+{'...(truncated)' if len(doc_data['markdown']) > 4000 else ''}
+
+User message: {message}"""
     
     result = await chat_with_agent(
         message=message,
@@ -110,21 +208,22 @@ async def chat(
         space_id=request.space_id,
     )
     
-    # Handle EDIT_PAGE marker in response
+    # Handle response markers
     response_text = result.get("response", "")
     page_edited = False
     edited_page_id = None
+    page_created = False
+    created_page_id = None
+    created_page_slug = None
     
+    # Handle EDIT_PAGE marker
     if "EDIT_PAGE:" in response_text:
-        # Parse the edit instruction
         try:
-            # Format: EDIT_PAGE:page_id:instruction
             parts = response_text.split("EDIT_PAGE:", 1)[1]
             page_id_str, edit_instruction = parts.split(":", 1)
             page_id = int(page_id_str.strip())
             edit_instruction = edit_instruction.strip()
             
-            # Perform the actual edit
             edit_result = await _perform_page_edit(db, page_id, edit_instruction)
             result["response"] = edit_result
             result["tool_calls"].append({
@@ -132,18 +231,45 @@ async def chat(
                 "args": {"page_id": page_id, "instruction": edit_instruction}
             })
             
-            # Mark that a page was edited for real-time update
             if "✅" in edit_result:
                 page_edited = True
                 edited_page_id = page_id
         except Exception as e:
             result["response"] = f"Failed to edit page: {str(e)}"
     
+    # Handle IMPORT_DOC marker
+    elif "IMPORT_DOC:" in response_text:
+        try:
+            parts = response_text.split("IMPORT_DOC:", 1)[1]
+            doc_id, space_id_str, title = parts.split(":", 2)
+            doc_id = doc_id.strip()
+            space_id = int(space_id_str.strip())
+            title = title.strip() if title.strip() else None
+            
+            import_result = await _import_document_to_page(
+                db, doc_id, space_id, title, current_user.id
+            )
+            result["response"] = import_result["message"]
+            result["tool_calls"].append({
+                "name": "import_document_to_page",
+                "args": {"document_id": doc_id, "space_id": space_id, "title": title}
+            })
+            
+            if import_result.get("success"):
+                page_created = True
+                created_page_id = import_result.get("page_id")
+                created_page_slug = import_result.get("page_slug")
+        except Exception as e:
+            result["response"] = f"Failed to import document: {str(e)}"
+    
     return ChatResponse(
         response=result["response"],
         tool_calls=result["tool_calls"],
         page_edited=page_edited,
         edited_page_id=edited_page_id,
+        page_created=page_created,
+        created_page_id=created_page_id,
+        created_page_slug=created_page_slug,
     )
 
 
@@ -347,4 +473,82 @@ async def _perform_page_edit(
 **New Version:** {page.version}
 
 🔄 **Refresh the page** in your browser to see the updated content."""
+
+
+async def _import_document_to_page(
+    db: AsyncSession,
+    document_id: str,
+    space_id: int,
+    title: Optional[str],
+    user_id: int,
+) -> dict:
+    """
+    Import a processed document as a new page.
+    """
+    # Get the uploaded document data
+    doc_data = get_uploaded_document(document_id)
+    
+    if not doc_data:
+        return {
+            "success": False,
+            "message": f"❌ Document not found. The document may have expired. Please upload it again.",
+        }
+    
+    # Verify space exists
+    space_result = await db.execute(select(Space).where(Space.id == space_id))
+    space = space_result.scalar_one_or_none()
+    
+    if not space:
+        return {
+            "success": False,
+            "message": f"❌ Space with ID {space_id} not found.",
+        }
+    
+    # Generate page title from filename if not provided
+    page_title = title or os.path.splitext(doc_data['filename'])[0]
+    page_slug = slugify(page_title)
+    
+    # Check for slug conflicts
+    existing = await db.execute(
+        select(Page).where(Page.space_id == space_id, Page.slug == page_slug)
+    )
+    if existing.scalar_one_or_none():
+        import time
+        page_slug = f"{page_slug}-{int(time.time())}"
+    
+    # Convert markdown to Tiptap JSON
+    processor = get_document_processor()
+    content_json = processor.convert_to_tiptap_json(doc_data['markdown'])
+    
+    # Create the page
+    new_page = Page(
+        title=page_title,
+        slug=page_slug,
+        space_id=space_id,
+        owner_id=user_id,
+        content_json=content_json,
+        content_text=doc_data['text'],
+        status=PageStatus.DRAFT,
+        version=1,
+    )
+    
+    db.add(new_page)
+    await db.commit()
+    await db.refresh(new_page)
+    
+    # Clean up the uploaded document from memory
+    clear_uploaded_document(document_id)
+    
+    return {
+        "success": True,
+        "page_id": new_page.id,
+        "page_slug": new_page.slug,
+        "message": f"""✅ **Document Imported Successfully!**
+
+**Page Created:** {page_title}
+**Space:** {space.name}
+**Status:** Draft
+
+📄 The document has been converted and saved as a new page. You can now view and edit it.""",
+    }
 
