@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Save,
   Clock,
@@ -35,7 +36,9 @@ export default function PageViewPage() {
   const [showVersions, setShowVersions] = useState(false);
   const [content, setContent] = useState<Record<string, unknown> | null>(null);
   const [title, setTitle] = useState("");
+  const [aiEditFlash, setAiEditFlash] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const prevReloadTriggerRef = useRef(0);
 
   useEffect(() => {
     const load = async () => {
@@ -157,19 +160,25 @@ export default function PageViewPage() {
 
   // Reload page content when AI edits it
   useEffect(() => {
-    if (pageReloadTrigger > 0 && page && space) {
+    // Only trigger reload if the trigger value actually changed (not initial mount)
+    if (pageReloadTrigger > 0 && pageReloadTrigger !== prevReloadTriggerRef.current && page && space) {
       const reloadPage = async () => {
         try {
           const pageData = await pagesApi.getBySlug(space.id, page.slug);
           setPage(pageData);
           setContent(pageData.content_json);
           setTitle(pageData.title);
+          
+          // Trigger flash animation
+          setAiEditFlash(true);
+          setTimeout(() => setAiEditFlash(false), 1500);
         } catch (error) {
           console.error("Failed to reload page:", error);
         }
       };
       reloadPage();
     }
+    prevReloadTriggerRef.current = pageReloadTrigger;
   }, [pageReloadTrigger, page, space]);
 
   if (loading) {
@@ -299,7 +308,45 @@ export default function PageViewPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto relative">
+        {/* AI Edit Flash Animation */}
+        <AnimatePresence>
+          {aiEditFlash && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 pointer-events-none z-20"
+            >
+              {/* Gradient overlay */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 0.3, 0] }}
+                transition={{ duration: 1.5 }}
+                className="absolute inset-0 bg-gradient-to-b from-purple-500/20 via-transparent to-transparent"
+              />
+              {/* Sparkle border effect */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: [0, 1, 0], scale: [0.98, 1, 1] }}
+                transition={{ duration: 1.2 }}
+                className="absolute inset-4 border-2 border-purple-500/50 rounded-lg"
+              />
+              {/* Success indicator */}
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: [0, 1, 1, 0], y: [-20, 0, 0, -10] }}
+                transition={{ duration: 1.5, times: [0, 0.2, 0.8, 1] }}
+                className="absolute top-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-full shadow-lg shadow-purple-500/25 flex items-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                Page updated by AI
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="max-w-3xl mx-auto px-12 py-12">
           {isEditing ? (
             <>

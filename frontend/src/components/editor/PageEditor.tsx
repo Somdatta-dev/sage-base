@@ -6,6 +6,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
+import Typography from "@tiptap/extension-typography";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EditorToolbar } from "./EditorToolbar";
@@ -13,6 +14,7 @@ import { SlashCommand } from "./SlashCommand";
 import { ResizableImage } from "./ResizableImage";
 import { CustomCodeBlock, CustomBlockquote } from "./CustomExtensions";
 import { AISelectionPopup } from "../ai/AISelectionPopup";
+import { ContextMenu } from "./ContextMenu";
 import { useAIStore } from "@/lib/store";
 
 interface PageEditorProps {
@@ -36,7 +38,9 @@ export function PageEditor({
   const { aiEnabled } = useAIStore();
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [showFlash, setShowFlash] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -47,6 +51,7 @@ export function PageEditor({
       }),
       CustomCodeBlock,
       CustomBlockquote,
+      Typography, // Adds smart quotes, arrows, etc.
       Placeholder.configure({
         placeholder: ({ node }) => {
           if (node.type.name === "heading") {
@@ -80,6 +85,19 @@ export function PageEditor({
       attributes: {
         class:
           "prose prose-invert prose-lg max-w-none focus:outline-none min-h-[300px]",
+      },
+      // Handle pasted markdown content
+      handlePaste: (_view, event, _slice) => {
+        const text = event.clipboardData?.getData("text/plain");
+        if (!text) return false;
+        
+        // Check if the pasted content looks like markdown
+        const hasMarkdown = /^#{1,6}\s|^\*\s|^-\s|^\d+\.\s|^>\s|```/m.test(text);
+        if (!hasMarkdown) return false;
+        
+        // We'll handle this differently - return false to let the editor handle it
+        // but with proper formatting through the CSS/display
+        return false;
       },
     },
     immediatelyRender: false,
@@ -121,6 +139,10 @@ export function PageEditor({
     const handleMouseUp = (e: MouseEvent) => {
       // Don't recalculate selection if clicking inside the AI popup
       if (popupRef.current && popupRef.current.contains(e.target as Node)) {
+        return;
+      }
+      // Don't trigger on right-click (context menu)
+      if (e.button === 2) {
         return;
       }
       // Small delay to ensure selection is complete
@@ -173,6 +195,52 @@ export function PageEditor({
     setSelection(null);
   }, []);
 
+  // Handle right-click context menu
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    // Close AI popup when opening context menu
+    setSelection(null);
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  // Trigger AI edit popup from context menu
+  const handleAIEditFromContext = useCallback(() => {
+    if (!editor) return;
+    // Close context menu first
+    setContextMenu(null);
+    
+    const { from, to } = editor.state.selection;
+    const selectedText = editor.state.doc.textBetween(from, to, " ");
+    
+    if (selectedText && selectedText.trim().length > 0) {
+      const domSelection = window.getSelection();
+      if (domSelection && domSelection.rangeCount > 0) {
+        const range = domSelection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        setSelection({
+          text: selectedText,
+          position: {
+            x: rect.left + rect.width / 2 - 150,
+            y: rect.bottom + 10,
+          },
+          from,
+          to,
+        });
+      }
+    }
+  }, [editor]);
+
+  // Close context menu when AI popup opens
+  useEffect(() => {
+    if (selection) {
+      setContextMenu(null);
+    }
+  }, [selection]);
+
   useEffect(() => {
     if (editor && content) {
       const currentContent = JSON.stringify(editor.getJSON());
@@ -196,7 +264,11 @@ export function PageEditor({
   }
 
   return (
-    <div className="novel-editor relative">
+    <div 
+      ref={editorContainerRef}
+      className="novel-editor relative"
+      onContextMenu={handleContextMenu}
+    >
       {editable && <EditorToolbar editor={editor} />}
       
       {/* Flash animation overlay */}
@@ -216,6 +288,18 @@ export function PageEditor({
       </AnimatePresence>
 
       <EditorContent editor={editor} />
+
+      {/* Context Menu */}
+      <AnimatePresence>
+        {contextMenu && editable && (
+          <ContextMenu
+            editor={editor}
+            position={contextMenu}
+            onClose={handleCloseContextMenu}
+            onAIEdit={aiEnabled ? handleAIEditFromContext : undefined}
+          />
+        )}
+      </AnimatePresence>
 
       {/* AI Selection Popup */}
       <AnimatePresence>
