@@ -1,18 +1,41 @@
 # SageBase - Internal Knowledge Base
 
-A Confluence-like internal knowledge base with Notion-style markdown editing. Built with Next.js 16, React 19, FastAPI, PostgreSQL, and Qdrant vector database.
+A Confluence-like internal knowledge base with Notion-style markdown editing and AI-powered features. Built with Next.js 16, React 19, FastAPI, PostgreSQL, and Qdrant vector database.
+
+**Repository**: [https://github.com/Somdatta-dev/sage-base](https://github.com/Somdatta-dev/sage-base)
 
 ## Features
 
+### Core Features
 - **JWT Authentication**: Secure token-based authentication with admin-only user creation
 - **Notion-style Editor**: Rich block-based editing with TipTap
 - **Spaces**: Organize documentation by team or project
-- **Hierarchical Pages**: Nested page structure
+- **Hierarchical Pages**: Nested page structure with drag-and-drop reordering
 - **Full-text Search**: PostgreSQL-powered search across all content
-- **Vector Search (AI)**: Semantic search using OpenAI embeddings and Qdrant
 - **Version History**: Track and restore previous page versions
 - **Role-based Access**: Admin, Member, and Viewer roles
 - **Docker Ready**: One-command deployment with Docker Compose
+
+### AI Features
+- **AI Sidebar Chat**: Collapsible chat sidebar with floating bubble icon for AI conversations
+- **AI Selection Popup**: Inline text editing - select text and get AI-powered suggestions
+- **Semantic Search**: Vector search using OpenAI embeddings and Qdrant
+- **AI Text Editing**: Right-click context menu with "Edit with AI" option
+- **Smart Responses**: AI understands context from the current page
+
+### Editor Features
+- **Slash Commands**: Type `/` to access formatting options:
+  - `/heading1`, `/heading2`, `/heading3` - Headers
+  - `/bullet` - Bullet list
+  - `/numbered` - Numbered list
+  - `/quote` - Block quote
+  - `/code` - Code block
+  - `/divider` - Horizontal divider
+  - `/image` - Insert image
+- **Rich Text Formatting**: Bold, italic, underline, strikethrough, code
+- **Markdown Support**: Paste markdown content with automatic formatting
+- **Context Menu**: Right-click for cut, copy, paste, and AI edit options
+- **Image Upload**: Drag-and-drop or click to upload images
 
 ## Architecture
 
@@ -41,6 +64,8 @@ A Confluence-like internal knowledge base with Notion-style markdown editing. Bu
 
 1. **Clone and configure**:
    ```bash
+   git clone https://github.com/Somdatta-dev/sage-base.git
+   cd sage-base
    cp env.example .env
    # Edit .env with your settings (especially SECRET_KEY!)
    ```
@@ -101,6 +126,30 @@ npm install
 npm run dev
 ```
 
+## AI Features Guide
+
+### AI Sidebar
+- Click the **floating AI bubble** (💬) on the right side of the screen
+- Opens a chat sidebar for conversations with the AI assistant
+- Ask questions about your documentation or get help writing content
+- Collapsible design - minimize when not in use
+
+### AI Text Selection Popup
+- **Select any text** in the editor
+- An AI popup appears near your selection
+- Enter a prompt like "make this more concise" or "fix grammar"
+- Click Apply to replace the selected text with AI-generated content
+
+### Context Menu AI Edit
+- **Right-click** on selected text in the editor
+- Choose **"Edit with AI"** from the context menu
+- Opens the AI popup for inline editing
+
+### Semantic Search
+- Enable by setting `OPENAI_API_KEY` in your `.env` file
+- Use the search bar with AI mode enabled
+- Finds semantically similar content, not just keyword matches
+
 ## Authentication
 
 SageBase uses **JWT (JSON Web Tokens)** for authentication:
@@ -137,7 +186,7 @@ On first startup, a default admin account is created using the environment varia
 | `DEFAULT_ADMIN_PASSWORD` | Initial admin password | `Admin123!` |
 | `API_DOMAIN` | Backend API URL | `http://localhost:8787` |
 | `WEBSITE_DOMAIN` | Frontend URL | `http://localhost:3737` |
-| `OPENAI_API_KEY` | OpenAI API key (for vector search) | - |
+| `OPENAI_API_KEY` | OpenAI API key (for AI features) | - |
 
 ### Ports
 
@@ -157,6 +206,10 @@ sagebase/
 │   ├── src/
 │   │   ├── app/             # App Router pages
 │   │   ├── components/      # React components
+│   │   │   ├── ai/          # AI components (Sidebar, SelectionPopup)
+│   │   │   ├── editor/      # TipTap editor components
+│   │   │   ├── layout/      # Layout components (Sidebar, Header)
+│   │   │   └── ui/          # UI components (buttons, modals)
 │   │   ├── lib/             # Utilities and API client
 │   │   └── types/           # TypeScript definitions
 │   ├── Dockerfile
@@ -164,10 +217,16 @@ sagebase/
 ├── backend/                 # FastAPI application
 │   ├── app/
 │   │   ├── api/             # API routes
+│   │   │   ├── ai.py        # AI endpoints (chat, edit-text)
+│   │   │   ├── auth.py      # Authentication endpoints
+│   │   │   ├── pages.py     # Page CRUD endpoints
+│   │   │   └── search.py    # Search endpoints
 │   │   ├── core/            # Config, security, JWT
 │   │   ├── models/          # SQLAlchemy models
 │   │   ├── schemas/         # Pydantic schemas
 │   │   └── services/        # Business logic
+│   │       ├── ai.py        # AI service (OpenAI integration)
+│   │       └── vector.py    # Vector search service
 │   ├── alembic/             # Database migrations
 │   ├── Dockerfile
 │   └── requirements.txt
@@ -203,27 +262,44 @@ sagebase/
 - `GET /api/pages/space/{space_id}/tree` - Get page tree
 - `POST /api/pages` - Create new page
 - `GET /api/pages/{id}` - Get page by ID
+- `GET /api/pages/slug/{space_key}/{slug}` - Get page by slug
 - `PATCH /api/pages/{id}` - Update page
 - `DELETE /api/pages/{id}` - Delete page
 - `GET /api/pages/{id}/versions` - Get version history
 
 ### Search
 - `GET /api/search?q=query` - Full-text search
-- `GET /api/search/semantic?q=query` - Vector search (requires OpenAI key)
+- `GET /api/search/semantic?q=query` - Vector/semantic search
+
+### AI
+- `POST /api/ai/chat` - Chat with AI assistant
+- `POST /api/ai/edit-text` - AI-powered text editing
 
 ### Files
 - `POST /api/files/upload` - Upload file
 - `DELETE /api/files/{path}` - Delete file
 
-## AI Features (Optional)
+## Tech Stack
 
-To enable AI-powered semantic search:
+### Frontend
+- **Next.js 16** - React framework with App Router
+- **React 19** - UI library
+- **TipTap** - Rich text editor
+- **Tailwind CSS** - Styling
+- **Zustand** - State management
+- **TypeScript** - Type safety
 
-1. Set `OPENAI_API_KEY` in your `.env` file
-2. Pages will be automatically indexed when saved
-3. Use the `/api/search/semantic` endpoint for vector search
+### Backend
+- **FastAPI** - Python web framework
+- **SQLAlchemy** - ORM
+- **Alembic** - Database migrations
+- **OpenAI** - AI/LLM integration
+- **Qdrant** - Vector database
 
-The system uses OpenAI's `text-embedding-3-small` model and stores vectors in Qdrant.
+### Infrastructure
+- **PostgreSQL** - Primary database
+- **Qdrant** - Vector storage for semantic search
+- **Docker** - Containerization
 
 ## License
 
