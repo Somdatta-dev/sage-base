@@ -174,3 +174,59 @@ export const searchApi = {
     return fetchWithAuth(`/api/search/semantic?${params}`);
   },
 };
+
+// AI API
+interface AIChatResponse {
+  response: string;
+  tool_calls: Array<{ name: string; args: Record<string, unknown> }>;
+  page_edited: boolean;
+  edited_page_id: number | null;
+}
+
+interface AIStatusResponse {
+  chat_enabled: boolean;
+  web_search_enabled: boolean;
+  knowledge_search_enabled: boolean;
+}
+
+interface AISummarizeResponse {
+  summary: string;
+  page_title: string;
+}
+
+interface AIEditTextResponse {
+  edited_text: string;
+  original_text: string;
+}
+
+export const aiApi = {
+  status: (): Promise<AIStatusResponse> => fetchWithAuth("/api/ai/status"),
+  
+  chat: (message: string, spaceId?: number, pageId?: number, sessionId: string = "default"): Promise<AIChatResponse> =>
+    fetchWithAuth("/api/ai/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        message,
+        session_id: sessionId,
+        space_id: spaceId,
+        page_id: pageId,
+      }),
+    }),
+  
+  summarize: (pageId: number): Promise<AISummarizeResponse> =>
+    fetchWithAuth("/api/ai/summarize", {
+      method: "POST",
+      body: JSON.stringify({ page_id: pageId }),
+    }),
+  
+  editText: (text: string, instruction: string): Promise<AIEditTextResponse> =>
+    fetchWithAuth("/api/ai/edit-text", {
+      method: "POST",
+      body: JSON.stringify({ text, instruction }),
+    }),
+  
+  clearSession: (sessionId: string = "default") =>
+    fetchWithAuth(`/api/ai/clear-session?session_id=${sessionId}`, {
+      method: "POST",
+    }),
+};

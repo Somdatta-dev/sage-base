@@ -65,3 +65,51 @@ export const useSpaceStore = create<SpaceState>((set) => ({
   pageTree: [],
   setPageTree: (tree) => set({ pageTree: tree }),
 }));
+
+// AI Store
+interface AIMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  toolCalls?: Array<{ name: string; args: Record<string, unknown> }>;
+  timestamp: Date;
+}
+
+interface PageContext {
+  pageId: number;
+  pageTitle: string;
+  spaceId: number;
+}
+
+interface AIState {
+  // Sidebar state
+  aiSidebarOpen: boolean;
+  setAISidebarOpen: (open: boolean) => void;
+  // Messages
+  messages: AIMessage[];
+  addMessage: (message: AIMessage) => void;
+  clearMessages: () => void;
+  // Configuration
+  aiEnabled: boolean;
+  setAIEnabled: (enabled: boolean) => void;
+  // Current page context
+  pageContext: PageContext | null;
+  setPageContext: (context: PageContext | null) => void;
+  // Page reload trigger (incremented when AI edits a page)
+  pageReloadTrigger: number;
+  triggerPageReload: () => void;
+}
+
+export const useAIStore = create<AIState>((set) => ({
+  aiSidebarOpen: false,
+  setAISidebarOpen: (open) => set({ aiSidebarOpen: open }),
+  messages: [],
+  addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
+  clearMessages: () => set({ messages: [] }),
+  aiEnabled: true, // Will be updated when AI status is fetched
+  setAIEnabled: (enabled) => set({ aiEnabled: enabled }),
+  pageContext: null,
+  setPageContext: (context) => set({ pageContext: context }),
+  pageReloadTrigger: 0,
+  triggerPageReload: () => set((state) => ({ pageReloadTrigger: state.pageReloadTrigger + 1 })),
+}));

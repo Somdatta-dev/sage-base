@@ -6,7 +6,9 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { SearchModal } from "@/components/layout/SearchModal";
 import { CreateSpaceModal } from "@/components/spaces/CreateSpaceModal";
-import { useAuthStore, useUIStore } from "@/lib/store";
+import { AISidebar } from "@/components/ai/AISidebar";
+import { useAuthStore, useUIStore, useAIStore } from "@/lib/store";
+import { aiApi } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 
 export default function DashboardLayout({
@@ -17,6 +19,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const { isAuthenticated, token } = useAuthStore();
   const { searchOpen, createSpaceOpen, setCreateSpaceOpen } = useUIStore();
+  const { setAIEnabled } = useAIStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,8 +27,14 @@ export default function DashboardLayout({
       router.push("/login");
     } else {
       setLoading(false);
+      // Check AI status
+      aiApi.status().then((status) => {
+        setAIEnabled(status.chat_enabled);
+      }).catch(() => {
+        setAIEnabled(false);
+      });
     }
-  }, [isAuthenticated, token, router]);
+  }, [isAuthenticated, token, router, setAIEnabled]);
 
   if (loading) {
     return (
@@ -44,6 +53,9 @@ export default function DashboardLayout({
       </div>
       {searchOpen && <SearchModal />}
       <CreateSpaceModal open={createSpaceOpen} onClose={() => setCreateSpaceOpen(false)} />
+      
+      {/* AI Sidebar - always rendered, shows/hides based on state */}
+      <AISidebar />
     </div>
   );
 }

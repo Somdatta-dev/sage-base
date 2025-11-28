@@ -1,13 +1,14 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Menu, Search, MoreHorizontal } from "lucide-react";
-import { useUIStore, useSpaceStore } from "@/lib/store";
+import { Menu, Search, MoreHorizontal, Sparkles } from "lucide-react";
+import { useUIStore, useSpaceStore, useAIStore } from "@/lib/store";
 
 export function Header() {
   const pathname = usePathname();
   const { toggleSidebar, setSearchOpen } = useUIStore();
   const { currentSpace } = useSpaceStore();
+  const { setAISidebarOpen } = useAIStore();
 
   // Generate breadcrumb from pathname
   const getBreadcrumb = () => {
@@ -67,6 +68,15 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-1">
+        <button
+          onClick={() => setAISidebarOpen(true)}
+          className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-[#2d2d2d] transition-colors text-[#9b9b9b] hover:text-[#e3e3e3] text-sm"
+          title="AI Assistant"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">AI</span>
+        </button>
+
         <button
           onClick={() => setSearchOpen(true)}
           className="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#2d2d2d] transition-colors text-[#9b9b9b] text-sm"

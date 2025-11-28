@@ -14,7 +14,7 @@ import {
   Check,
 } from "lucide-react";
 import { spacesApi, pagesApi } from "@/lib/api";
-import { useSpaceStore } from "@/lib/store";
+import { useSpaceStore, useAIStore } from "@/lib/store";
 import type { Page, Space } from "@/types";
 import { formatDateTime } from "@/lib/utils";
 import { PageEditor } from "@/components/editor/PageEditor";
@@ -24,6 +24,7 @@ export default function PageViewPage() {
   const params = useParams();
   const router = useRouter();
   const { setCurrentSpace, setPageTree } = useSpaceStore();
+  const { setPageContext, pageReloadTrigger } = useAIStore();
   const [space, setSpace] = useState<Space | null>(null);
   const [page, setPage] = useState<Page | null>(null);
   const [loading, setLoading] = useState(true);
@@ -139,6 +140,37 @@ export default function PageViewPage() {
       }
     };
   }, []);
+
+  // Update AI context when page is loaded
+  useEffect(() => {
+    if (page && space) {
+      setPageContext({
+        pageId: page.id,
+        pageTitle: page.title,
+        spaceId: space.id,
+      });
+    }
+    return () => {
+      setPageContext(null);
+    };
+  }, [page, space, setPageContext]);
+
+  // Reload page content when AI edits it
+  useEffect(() => {
+    if (pageReloadTrigger > 0 && page && space) {
+      const reloadPage = async () => {
+        try {
+          const pageData = await pagesApi.getBySlug(space.id, page.slug);
+          setPage(pageData);
+          setContent(pageData.content_json);
+          setTitle(pageData.title);
+        } catch (error) {
+          console.error("Failed to reload page:", error);
+        }
+      };
+      reloadPage();
+    }
+  }, [pageReloadTrigger, page, space]);
 
   if (loading) {
     return (

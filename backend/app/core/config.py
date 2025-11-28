@@ -23,10 +23,15 @@ class Settings(BaseSettings):
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6337
     
-    # OpenAI
+    # AI Model Configuration (OpenAI-compatible, works with vLLM)
     OPENAI_API_KEY: str = ""
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"  # Change for vLLM
+    OPENAI_MODEL: str = "gpt-4o-mini"  # Chat model
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     EMBEDDING_DIMENSIONS: int = 1536
+    
+    # Tavily Web Search
+    TAVILY_API_KEY: str = ""
     
     # File uploads
     UPLOAD_DIR: str = "./uploads"
