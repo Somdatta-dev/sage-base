@@ -1,6 +1,8 @@
 import { useAuthStore } from "./store";
 import type { AuthResponse, User } from "@/types";
 
+// API_BASE is set at build time via NEXT_PUBLIC_API_URL
+// For production, set API_DOMAIN env var in your deployment
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
 
 function getToken(): string | null {
