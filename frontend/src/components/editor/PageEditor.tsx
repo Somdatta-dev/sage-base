@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { EditorToolbar } from "./EditorToolbar";
 import { SlashCommand } from "./SlashCommand";
 import { ResizableImage } from "./ResizableImage";
+import { CustomCodeBlock, CustomBlockquote } from "./CustomExtensions";
 
 interface PageEditorProps {
   content: Record<string, unknown> | null;
@@ -26,12 +27,12 @@ export function PageEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
-        codeBlock: {
-          HTMLAttributes: {
-            class: "bg-slate-800 rounded-lg p-4 font-mono text-sm",
-          },
-        },
+        // Disable built-in codeBlock and blockquote - we use custom ones
+        codeBlock: false,
+        blockquote: false,
       }),
+      CustomCodeBlock,
+      CustomBlockquote,
       Placeholder.configure({
         placeholder: ({ node }) => {
           if (node.type.name === "heading") {

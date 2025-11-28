@@ -20,7 +20,6 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check auth on mount
     if (!isAuthenticated()) {
       router.push("/login");
     } else {
@@ -30,16 +29,16 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <Loader2 className="w-8 h-8 animate-spin text-sage-500" />
+      <div className="h-screen flex items-center justify-center bg-[#191919]">
+        <Loader2 className="w-6 h-6 animate-spin text-[#9b9b9b]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex">
+    <div className="h-screen flex bg-[#191919] overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
         <main className="flex-1 overflow-auto">{children}</main>
       </div>

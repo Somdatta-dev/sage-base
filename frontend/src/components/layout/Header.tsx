@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Menu, Search, Bell } from "lucide-react";
+import { Menu, Search, MoreHorizontal } from "lucide-react";
 import { useUIStore, useSpaceStore } from "@/lib/store";
 
 export function Header() {
@@ -38,25 +38,25 @@ export function Header() {
   const breadcrumb = getBreadcrumb();
 
   return (
-    <header className="h-14 border-b border-white/10 flex items-center justify-between px-4">
-      <div className="flex items-center gap-4">
+    <header className="h-11 flex items-center justify-between px-3 bg-[#191919]">
+      <div className="flex items-center gap-2">
         <button
           onClick={toggleSidebar}
-          className="p-2 hover:bg-white/5 rounded-lg transition-colors text-gray-400 hover:text-white"
+          className="p-1.5 rounded hover:bg-[#2d2d2d] transition-colors text-[#9b9b9b] hover:text-[#e3e3e3]"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-4 h-4" />
         </button>
 
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm">
+        <nav className="flex items-center gap-1 text-sm">
           {breadcrumb.map((item, index) => (
-            <div key={item.href} className="flex items-center gap-2">
-              {index > 0 && <span className="text-gray-600">/</span>}
+            <div key={item.href} className="flex items-center gap-1">
+              {index > 0 && <span className="text-[#4b4b4b]">/</span>}
               <span
                 className={
                   index === breadcrumb.length - 1
-                    ? "text-white font-medium"
-                    : "text-gray-400"
+                    ? "text-[#e3e3e3]"
+                    : "text-[#9b9b9b] hover:text-[#e3e3e3] cursor-pointer"
                 }
               >
                 {item.label}
@@ -66,23 +66,20 @@ export function Header() {
         </nav>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         <button
           onClick={() => setSearchOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors text-gray-400 text-sm"
+          className="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#2d2d2d] transition-colors text-[#9b9b9b] text-sm"
         >
-          <Search className="w-4 h-4" />
+          <Search className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Search</span>
-          <kbd className="hidden sm:inline text-xs bg-white/10 px-1.5 py-0.5 rounded ml-2">
-            ⌘K
-          </kbd>
+          <kbd className="hidden sm:inline text-xs text-[#6b6b6b] ml-1">⌘K</kbd>
         </button>
 
-        <button className="p-2 hover:bg-white/5 rounded-lg transition-colors text-gray-400 hover:text-white relative">
-          <Bell className="w-5 h-5" />
+        <button className="p-1.5 rounded hover:bg-[#2d2d2d] transition-colors text-[#9b9b9b] hover:text-[#e3e3e3]">
+          <MoreHorizontal className="w-4 h-4" />
         </button>
       </div>
     </header>
   );
 }
-

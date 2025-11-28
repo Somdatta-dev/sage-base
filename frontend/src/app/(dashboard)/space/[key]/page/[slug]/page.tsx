@@ -29,7 +29,7 @@ export default function PageViewPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [isEditing, setIsEditing] = useState(true); // Start in edit mode
+  const [isEditing, setIsEditing] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const [content, setContent] = useState<Record<string, unknown> | null>(null);
@@ -86,7 +86,6 @@ export default function PageViewPage() {
     (newContent: Record<string, unknown>) => {
       setContent(newContent);
 
-      // Auto-save after 2 seconds of inactivity
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -107,7 +106,6 @@ export default function PageViewPage() {
       });
       setPage(updated);
 
-      // Refresh tree
       if (space) {
         const tree = await pagesApi.getTree(space.id);
         setPageTree(tree);
@@ -145,7 +143,7 @@ export default function PageViewPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-8 h-8 animate-spin text-sage-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-[#9b9b9b]" />
       </div>
     );
   }
@@ -153,55 +151,55 @@ export default function PageViewPage() {
   if (!page || !space) return null;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-[#191919]">
       {/* Header */}
-      <div className="border-b border-white/10 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="border-b border-[#2d2d2d] px-4 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <span
-            className={`px-2 py-0.5 text-xs rounded-full ${
+            className={`px-2 py-0.5 text-xs rounded ${
               page.status === "published"
-                ? "bg-green-500/10 text-green-400"
-                : "bg-yellow-500/10 text-yellow-400"
+                ? "bg-[#2e7d32]/20 text-[#66bb6a]"
+                : "bg-[#f9a825]/20 text-[#ffca28]"
             }`}
           >
             {page.status}
           </span>
-          <span className="text-sm text-gray-500 flex items-center gap-1">
-            <Clock className="w-4 h-4" />
+          <span className="text-xs text-[#6b6b6b] flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5" />
             Updated {formatDateTime(page.updated_at)}
           </span>
-          <span className="text-sm text-gray-500">v{page.version}</span>
+          <span className="text-xs text-[#6b6b6b]">v{page.version}</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {saving ? (
-            <span className="text-sm text-gray-400 flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-xs text-[#9b9b9b] flex items-center gap-1.5 px-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
               Saving...
             </span>
           ) : saved ? (
-            <span className="text-sm text-green-400 flex items-center gap-2">
-              <Check className="w-4 h-4" />
+            <span className="text-xs text-[#66bb6a] flex items-center gap-1.5 px-2">
+              <Check className="w-3.5 h-3.5" />
               Saved
             </span>
           ) : null}
 
           <button
             onClick={() => setIsEditing(!isEditing)}
-            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded transition-colors ${
               isEditing
-                ? "bg-sage-600 text-white"
-                : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
+                ? "bg-[#2383e2] text-white"
+                : "bg-[#2d2d2d] text-[#9b9b9b] hover:bg-[#373737]"
             }`}
           >
             {isEditing ? (
               <>
-                <Eye className="w-4 h-4" />
+                <Eye className="w-3.5 h-3.5" />
                 Preview
               </>
             ) : (
               <>
-                <Edit2 className="w-4 h-4" />
+                <Edit2 className="w-3.5 h-3.5" />
                 Edit
               </>
             )}
@@ -211,7 +209,7 @@ export default function PageViewPage() {
             <button
               onClick={handlePublish}
               disabled={saving}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#2e7d32] hover:bg-[#388e3c] text-white rounded transition-colors disabled:opacity-50"
             >
               Publish
             </button>
@@ -220,18 +218,18 @@ export default function PageViewPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-sage-600 hover:bg-sage-500 text-white rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#2383e2] hover:bg-[#1a6fc2] text-white rounded transition-colors disabled:opacity-50"
           >
-            <Save className="w-4 h-4" />
+            <Save className="w-3.5 h-3.5" />
             Save
           </button>
 
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400"
+              className="p-1.5 hover:bg-[#2d2d2d] rounded transition-colors text-[#9b9b9b]"
             >
-              <MoreHorizontal className="w-5 h-5" />
+              <MoreHorizontal className="w-4 h-4" />
             </button>
 
             {showMenu && (
@@ -240,13 +238,13 @@ export default function PageViewPage() {
                   className="fixed inset-0 z-10"
                   onClick={() => setShowMenu(false)}
                 />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-slate-800 border border-white/10 rounded-lg shadow-xl z-20 py-1">
+                <div className="absolute right-0 top-full mt-1 w-44 bg-[#252525] border border-[#373737] rounded-md shadow-lg z-20 py-1">
                   <button
                     onClick={() => {
                       setShowVersions(true);
                       setShowMenu(false);
                     }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-white/5 transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[#e3e3e3] hover:bg-[#2d2d2d] transition-colors"
                   >
                     <History className="w-4 h-4" />
                     Version History
@@ -256,7 +254,7 @@ export default function PageViewPage() {
                       handleDelete();
                       setShowMenu(false);
                     }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[#eb5757] hover:bg-[#2d2d2d] transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete Page
@@ -270,15 +268,15 @@ export default function PageViewPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-8 py-10">
+        <div className="max-w-3xl mx-auto px-12 py-12">
           {isEditing ? (
             <>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full text-4xl font-bold text-white bg-transparent border-none outline-none mb-8 placeholder-gray-600"
-                placeholder="Page Title"
+                className="w-full text-4xl font-bold text-[#e3e3e3] bg-transparent border-none outline-none mb-6 placeholder-[#4b4b4b]"
+                placeholder="Untitled"
               />
               <PageEditor
                 content={content}
@@ -288,7 +286,7 @@ export default function PageViewPage() {
             </>
           ) : (
             <>
-              <h1 className="text-4xl font-bold text-white mb-8">{title}</h1>
+              <h1 className="text-4xl font-bold text-[#e3e3e3] mb-6">{title}</h1>
               <PageEditor content={content} onChange={() => {}} editable={false} />
             </>
           )}
@@ -304,4 +302,3 @@ export default function PageViewPage() {
     </div>
   );
 }
-

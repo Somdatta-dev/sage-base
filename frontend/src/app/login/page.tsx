@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, BookOpen } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 
@@ -37,30 +37,30 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-[#191919] flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sage-500 to-sage-700 flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
+          <div className="inline-flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded bg-gradient-to-br from-[#ff6b6b] to-[#ffa502] flex items-center justify-center">
+              <span className="text-white text-sm font-bold">S</span>
             </div>
-            <span className="text-2xl font-bold text-white">SageBase</span>
+            <span className="text-xl font-semibold text-[#e3e3e3]">SageBase</span>
           </div>
-          <p className="text-gray-400">Sign in to your knowledge base</p>
+          <p className="text-[#9b9b9b] text-sm">Sign in to your workspace</p>
         </div>
 
         {/* Login Form */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-[#202020] border border-[#373737] rounded-lg p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+              <div className="p-3 bg-[#eb5757]/10 border border-[#eb5757]/20 rounded text-[#eb5757] text-sm">
                 {error}
               </div>
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="email" className="block text-sm text-[#9b9b9b] mb-1.5">
                 Email
               </label>
               <input
@@ -68,7 +68,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sage-500 focus:border-transparent transition-all"
+                className="w-full px-3 py-2 bg-[#191919] border border-[#373737] rounded text-[#e3e3e3] placeholder-[#6b6b6b] focus:outline-none focus:border-[#2383e2] transition-colors text-sm"
                 placeholder="you@company.com"
                 required
                 autoComplete="email"
@@ -76,7 +76,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="password" className="block text-sm text-[#9b9b9b] mb-1.5">
                 Password
               </label>
               <input
@@ -84,7 +84,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sage-500 focus:border-transparent transition-all"
+                className="w-full px-3 py-2 bg-[#191919] border border-[#373737] rounded text-[#e3e3e3] placeholder-[#6b6b6b] focus:outline-none focus:border-[#2383e2] transition-colors text-sm"
                 placeholder="••••••••"
                 required
                 autoComplete="current-password"
@@ -94,25 +94,24 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 bg-gradient-to-r from-sage-600 to-sage-700 hover:from-sage-500 hover:to-sage-600 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-2 px-4 bg-[#2383e2] hover:bg-[#1a6fc2] text-white text-sm font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Signing in...
                 </>
               ) : (
-                "Sign In"
+                "Continue with Email"
               )}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-500">
-            Contact your administrator if you need an account
+          <p className="mt-4 text-center text-xs text-[#6b6b6b]">
+            Contact your administrator for account access
           </p>
         </div>
       </div>
     </div>
   );
 }
-

@@ -3,11 +3,13 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewProps } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link2, Trash2, Check } from "lucide-react";
 
-function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewProps) {
+function ResizableImageComponent({ node, updateAttributes, selected, deleteNode }: NodeViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [aspectRatio, setAspectRatio] = useState(1);
+  const [copied, setCopied] = useState(false);
   const startPos = useRef({ x: 0, y: 0, width: 0, height: 0 });
 
   const src = node.attrs.src as string;
@@ -32,6 +34,16 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
     } else {
       setAspectRatio((width || img.naturalWidth) / (height || img.naturalHeight));
     }
+  };
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(src);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDelete = () => {
+    deleteNode();
   };
 
   const handleMouseDown = useCallback(
@@ -86,12 +98,34 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
   );
 
   return (
-    <NodeViewWrapper className="resizable-image-wrapper">
+    <NodeViewWrapper className="resizable-image-wrapper group">
       <div
         ref={containerRef}
-        className={`relative inline-block ${selected ? "ring-2 ring-sage-500 ring-offset-2 ring-offset-slate-900" : ""}`}
+        className={`relative inline-block ${selected ? "ring-2 ring-[#2383e2] ring-offset-2 ring-offset-[#191919]" : ""}`}
         style={{ width: width || "auto" }}
       >
+        {/* Action buttons */}
+        <div className="absolute right-2 top-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <button
+            onClick={handleCopyUrl}
+            className="p-1.5 rounded bg-[#252525]/90 hover:bg-[#373737] text-[#9b9b9b] hover:text-[#e3e3e3] transition-colors"
+            title="Copy image URL"
+          >
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-green-500" />
+            ) : (
+              <Link2 className="w-3.5 h-3.5" />
+            )}
+          </button>
+          <button
+            onClick={handleDelete}
+            className="p-1.5 rounded bg-[#252525]/90 hover:bg-[#373737] text-[#9b9b9b] hover:text-[#eb5757] transition-colors"
+            title="Delete image"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
         <img
           src={src}
           alt={alt || ""}
@@ -105,19 +139,19 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
           <>
             {/* Corner handles */}
             <div
-              className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-sage-500 border-2 border-white rounded-sm cursor-nwse-resize hover:bg-sage-400"
+              className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-[#2383e2] rounded-sm cursor-nwse-resize hover:bg-[#1a6fc2]"
               onMouseDown={(e) => handleMouseDown(e, "top-left")}
             />
             <div
-              className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-sage-500 border-2 border-white rounded-sm cursor-nesw-resize hover:bg-sage-400"
+              className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#2383e2] rounded-sm cursor-nesw-resize hover:bg-[#1a6fc2]"
               onMouseDown={(e) => handleMouseDown(e, "top-right")}
             />
             <div
-              className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-sage-500 border-2 border-white rounded-sm cursor-nesw-resize hover:bg-sage-400"
+              className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-[#2383e2] rounded-sm cursor-nesw-resize hover:bg-[#1a6fc2]"
               onMouseDown={(e) => handleMouseDown(e, "bottom-left")}
             />
             <div
-              className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-sage-500 border-2 border-white rounded-sm cursor-nwse-resize hover:bg-sage-400"
+              className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-[#2383e2] rounded-sm cursor-nwse-resize hover:bg-[#1a6fc2]"
               onMouseDown={(e) => handleMouseDown(e, "bottom-right")}
             />
           </>

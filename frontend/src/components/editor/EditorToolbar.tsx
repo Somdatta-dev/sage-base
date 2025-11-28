@@ -88,10 +88,10 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       disabled={disabled}
       title={title}
       className={cn(
-        "p-2 rounded-lg transition-colors disabled:opacity-30",
+        "p-1.5 rounded transition-colors disabled:opacity-30",
         isActive
-          ? "bg-sage-600 text-white"
-          : "text-gray-400 hover:text-white hover:bg-white/10"
+          ? "bg-[#373737] text-[#e3e3e3]"
+          : "text-[#9b9b9b] hover:bg-[#2d2d2d] hover:text-[#e3e3e3]"
       )}
     >
       {children}
@@ -99,7 +99,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-1 p-2 mb-4 bg-white/5 border border-white/10 rounded-xl">
+    <div className="flex flex-wrap items-center gap-0.5 p-1.5 mb-4 bg-[#252525] border border-[#373737] rounded-md">
       <ToolbarButton
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
@@ -116,7 +116,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         <Redo className="w-4 h-4" />
       </ToolbarButton>
 
-      <div className="w-px h-6 bg-white/10 mx-1" />
+      <div className="w-px h-5 bg-[#373737] mx-1" />
 
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -150,7 +150,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         <Code className="w-4 h-4" />
       </ToolbarButton>
 
-      <div className="w-px h-6 bg-white/10 mx-1" />
+      <div className="w-px h-5 bg-[#373737] mx-1" />
 
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
@@ -176,7 +176,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         <Heading3 className="w-4 h-4" />
       </ToolbarButton>
 
-      <div className="w-px h-6 bg-white/10 mx-1" />
+      <div className="w-px h-5 bg-[#373737] mx-1" />
 
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -202,7 +202,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         <CheckSquare className="w-4 h-4" />
       </ToolbarButton>
 
-      <div className="w-px h-6 bg-white/10 mx-1" />
+      <div className="w-px h-5 bg-[#373737] mx-1" />
 
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
@@ -219,7 +219,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         <Minus className="w-4 h-4" />
       </ToolbarButton>
 
-      <div className="w-px h-6 bg-white/10 mx-1" />
+      <div className="w-px h-5 bg-[#373737] mx-1" />
 
       <div className="relative">
         <ToolbarButton
@@ -231,13 +231,13 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         </ToolbarButton>
 
         {showLinkInput && (
-          <div className="absolute top-full left-0 mt-2 p-2 bg-slate-800 border border-white/10 rounded-lg shadow-xl z-10">
+          <div className="absolute top-full left-0 mt-2 p-2 bg-[#252525] border border-[#373737] rounded-md shadow-lg z-10">
             <input
               type="url"
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
               placeholder="https://..."
-              className="w-48 px-3 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-sage-500"
+              className="w-48 px-2 py-1.5 bg-[#191919] border border-[#373737] rounded text-sm text-[#e3e3e3] placeholder-[#6b6b6b] focus:outline-none focus:border-[#2383e2]"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -259,4 +259,3 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
     </div>
   );
 }
-

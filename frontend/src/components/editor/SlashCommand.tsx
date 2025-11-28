@@ -77,7 +77,21 @@ const commands: CommandItem[] = [
     description: "Track tasks with checkboxes",
     icon: CheckSquare,
     command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).toggleTaskList().run();
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .toggleTaskList()
+        .command(({ tr, dispatch }) => {
+          // Insert empty paragraph after the task list
+          if (dispatch) {
+            const { $to } = tr.selection;
+            const endPos = $to.end($to.depth);
+            tr.insert(endPos, editor.schema.nodes.paragraph.create());
+          }
+          return true;
+        })
+        .run();
     },
   },
   {
@@ -85,7 +99,21 @@ const commands: CommandItem[] = [
     description: "Display code with syntax highlighting",
     icon: Code,
     command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .toggleCodeBlock()
+        .command(({ tr, dispatch }) => {
+          // Insert empty paragraph after the code block
+          if (dispatch) {
+            const { $to } = tr.selection;
+            const endPos = $to.end($to.depth);
+            tr.insert(endPos, editor.schema.nodes.paragraph.create());
+          }
+          return true;
+        })
+        .run();
     },
   },
   {
@@ -93,7 +121,21 @@ const commands: CommandItem[] = [
     description: "Capture a quote",
     icon: Quote,
     command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).toggleBlockquote().run();
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .toggleBlockquote()
+        .command(({ tr, dispatch }) => {
+          // Insert empty paragraph after the blockquote
+          if (dispatch) {
+            const { $to } = tr.selection;
+            const endPos = $to.end($to.depth);
+            tr.insert(endPos, editor.schema.nodes.paragraph.create());
+          }
+          return true;
+        })
+        .run();
     },
   },
   {
@@ -101,6 +143,7 @@ const commands: CommandItem[] = [
     description: "Insert a horizontal divider",
     icon: Minus,
     command: ({ editor, range }) => {
+      // Divider already creates an empty paragraph after it
       editor.chain().focus().deleteRange(range).setHorizontalRule().run();
     },
   },
@@ -132,13 +175,14 @@ const commands: CommandItem[] = [
           );
           const data = await res.json();
           if (data.url) {
+            // Insert image followed by empty paragraph
             editor
               .chain()
               .focus()
-              .insertContent({
-                type: "image",
-                attrs: { src: data.url },
-              })
+              .insertContent([
+                { type: "image", attrs: { src: data.url } },
+                { type: "paragraph" },
+              ])
               .run();
           }
         } catch (err) {
@@ -207,7 +251,7 @@ function CommandList({ items, command }: CommandListProps) {
 
   if (items.length === 0) {
     return (
-      <div className="bg-slate-800 border border-white/10 rounded-lg shadow-xl p-3 text-gray-400 text-sm">
+      <div className="bg-[#252525] border border-[#373737] rounded-md shadow-lg p-3 text-[#9b9b9b] text-sm">
         No results
       </div>
     );
@@ -216,7 +260,7 @@ function CommandList({ items, command }: CommandListProps) {
   return (
     <div
       ref={containerRef}
-      className="bg-slate-800 border border-white/10 rounded-lg shadow-xl overflow-hidden max-h-80 overflow-y-auto"
+      className="bg-[#252525] border border-[#373737] rounded-md shadow-lg overflow-hidden max-h-80 overflow-y-auto min-w-[280px]"
     >
       {items.map((item, index) => {
         const Icon = item.icon;
@@ -227,16 +271,16 @@ function CommandList({ items, command }: CommandListProps) {
             onClick={() => selectItem(index)}
             className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
               index === selectedIndex
-                ? "bg-sage-600/50 text-white"
-                : "text-gray-300 hover:bg-white/5"
+                ? "bg-[#373737] text-[#e3e3e3]"
+                : "text-[#9b9b9b] hover:bg-[#2d2d2d]"
             }`}
           >
-            <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-              <Icon className="w-5 h-5" />
+            <div className="w-8 h-8 rounded bg-[#2d2d2d] flex items-center justify-center flex-shrink-0">
+              <Icon className="w-4 h-4" />
             </div>
             <div>
-              <div className="font-medium text-sm">{item.title}</div>
-              <div className="text-xs text-gray-500">{item.description}</div>
+              <div className="text-sm">{item.title}</div>
+              <div className="text-xs text-[#6b6b6b]">{item.description}</div>
             </div>
           </button>
         );
