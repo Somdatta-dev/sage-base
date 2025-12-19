@@ -75,7 +75,15 @@ export function TableToolbar({ editor }: TableToolbarProps) {
     variant?: "default" | "danger";
   }) => (
     <button
-      onClick={onClick}
+      onMouseDown={(e) => {
+        e.preventDefault(); // Prevent focus loss from editor
+        e.stopPropagation();
+      }}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
       disabled={disabled}
       title={title}
       className={`p-1.5 rounded transition-colors disabled:opacity-30 ${
@@ -94,6 +102,10 @@ export function TableToolbar({ editor }: TableToolbarProps) {
         initial={{ opacity: 0, y: -5 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -5 }}
+        onMouseDown={(e) => {
+          e.preventDefault(); // Prevent focus loss from editor
+          e.stopPropagation();
+        }}
         style={{
           position: "absolute",
           top: position.top,
