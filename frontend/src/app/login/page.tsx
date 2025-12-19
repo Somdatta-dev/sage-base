@@ -8,17 +8,23 @@ import { useAuthStore } from "@/lib/store";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setAuth, isAuthenticated } = useAuthStore();
+  const { setAuth, isAuthenticated, _hasHydrated } = useAuthStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (isAuthenticated()) {
+    // Manually trigger Zustand rehydration from localStorage
+    useAuthStore.persist.rehydrate();
+  }, []);
+
+  useEffect(() => {
+    // Only redirect after hydration is complete
+    if (_hasHydrated && isAuthenticated()) {
       router.push("/dashboard");
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, _hasHydrated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

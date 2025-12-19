@@ -7,15 +7,12 @@ import { Header } from "@/components/layout/Header";
 import { SearchModal } from "@/components/layout/SearchModal";
 import { CreateSpaceModal } from "@/components/spaces/CreateSpaceModal";
 import { AISidebar } from "@/components/ai/AISidebar";
+import { HydrationGuard } from "@/components/HydrationGuard";
 import { useAuthStore, useUIStore, useAIStore } from "@/lib/store";
 import { aiApi } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function DashboardContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { isAuthenticated, token } = useAuthStore();
   const { searchOpen, createSpaceOpen, setCreateSpaceOpen } = useUIStore();
@@ -57,5 +54,17 @@ export default function DashboardLayout({
       {/* AI Sidebar - always rendered, shows/hides based on state */}
       <AISidebar />
     </div>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <HydrationGuard>
+      <DashboardContent>{children}</DashboardContent>
+    </HydrationGuard>
   );
 }

@@ -1,16 +1,17 @@
-import { useAuthStore } from "./store";
 import type { AuthResponse, User } from "@/types";
 
 // API_BASE is set at build time via NEXT_PUBLIC_API_URL
 // For production, set API_DOMAIN env var in your deployment
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
 
+// Dynamic import to avoid SSR issues with Zustand persist
 function getToken(): string | null {
-  // For client-side, get from store
-  if (typeof window !== "undefined") {
-    return useAuthStore.getState().token;
+  if (typeof window === "undefined") {
+    return null;
   }
-  return null;
+  // Lazy import to avoid circular dependency and SSR issues
+  const { useAuthStore } = require("./store");
+  return useAuthStore.getState().token;
 }
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
@@ -33,6 +34,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
   if (response.status === 401) {
     // Token expired or invalid - clear auth
     if (typeof window !== "undefined") {
+      const { useAuthStore } = require("./store");
       useAuthStore.getState().clearAuth();
       window.location.href = "/login";
     }
@@ -228,7 +230,7 @@ export const aiApi = {
     const formData = new FormData();
     formData.append("file", file);
     
-    const token = useAuthStore.getState().token;
+    const token = getToken();
     const response = await fetch(`${API_BASE}/api/ai/upload-document`, {
       method: "POST",
       headers: {

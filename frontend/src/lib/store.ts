@@ -1,14 +1,16 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { User, Space, PageTreeItem } from "@/types";
 
-// Auth Store with persistence
+// Auth Store with persistence - SSR safe using skipHydration
 interface AuthState {
   user: User | null;
   token: string | null;
+  _hasHydrated: boolean;
   setAuth: (user: User, token: string) => void;
   clearAuth: () => void;
   isAuthenticated: () => boolean;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -16,12 +18,19 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       token: null,
+      _hasHydrated: false,
       setAuth: (user, token) => set({ user, token }),
       clearAuth: () => set({ user: null, token: null }),
       isAuthenticated: () => !!get().token,
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
     }),
     {
       name: "sagebase-auth",
+      storage: createJSONStorage(() => localStorage),
+      skipHydration: true, // Skip automatic hydration - we'll do it manually
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

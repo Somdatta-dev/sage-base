@@ -2,18 +2,24 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Book, Lock, Search, FileText, FolderOpen, Loader2 } from "lucide-react";
+import { Book, Lock, Search, FileText, FolderOpen } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
 
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
-    if (isAuthenticated()) {
+    // Manually trigger Zustand rehydration from localStorage
+    useAuthStore.persist.rehydrate();
+  }, []);
+
+  useEffect(() => {
+    // Only check auth after hydration is complete
+    if (_hasHydrated && isAuthenticated()) {
       router.push("/dashboard");
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, _hasHydrated, router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-925 via-slate-900 to-sage-950">
