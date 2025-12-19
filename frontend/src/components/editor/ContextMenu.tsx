@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Editor } from "@tiptap/react";
 import {
@@ -18,10 +18,14 @@ import {
   Quote,
   Code,
   Trash2,
-  Sparkles,
   FileText,
   Type,
   Wand2,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  Minus,
 } from "lucide-react";
 
 interface ContextMenuProps {
@@ -42,7 +46,6 @@ interface MenuItem {
 
 export function ContextMenu({ editor, position, onClose, onAIEdit }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const [submenu, setSubmenu] = useState<string | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -72,6 +75,7 @@ export function ContextMenu({ editor, position, onClose, onAIEdit }: ContextMenu
     editor.state.selection.to,
     " "
   );
+  const isInTable = editor.isActive("table");
 
   // Clipboard operations
   const handleCut = () => {
@@ -223,6 +227,42 @@ export function ContextMenu({ editor, position, onClose, onAIEdit }: ContextMenu
     onClose();
   };
 
+  // Table operations
+  const handleAddRowAbove = () => {
+    editor.chain().focus().addRowBefore().run();
+    onClose();
+  };
+
+  const handleAddRowBelow = () => {
+    editor.chain().focus().addRowAfter().run();
+    onClose();
+  };
+
+  const handleDeleteRow = () => {
+    editor.chain().focus().deleteRow().run();
+    onClose();
+  };
+
+  const handleAddColumnLeft = () => {
+    editor.chain().focus().addColumnBefore().run();
+    onClose();
+  };
+
+  const handleAddColumnRight = () => {
+    editor.chain().focus().addColumnAfter().run();
+    onClose();
+  };
+
+  const handleDeleteColumn = () => {
+    editor.chain().focus().deleteColumn().run();
+    onClose();
+  };
+
+  const handleDeleteTable = () => {
+    editor.chain().focus().deleteTable().run();
+    onClose();
+  };
+
   // Adjust position to keep menu in viewport
   const adjustedPosition = {
     x: Math.min(position.x, window.innerWidth - 220),
@@ -240,6 +280,17 @@ export function ContextMenu({ editor, position, onClose, onAIEdit }: ContextMenu
     ...(hasSelection && onAIEdit ? [
       { label: "Edit with AI", icon: <Wand2 className="w-4 h-4" />, action: () => { onAIEdit(); onClose(); }, divider: true },
     ] : []),
+
+    // Table operations (if in table)
+    ...(isInTable ? [
+      { label: "Add Row Above", icon: <ArrowUp className="w-4 h-4" />, action: handleAddRowAbove },
+      { label: "Add Row Below", icon: <ArrowDown className="w-4 h-4" />, action: handleAddRowBelow },
+      { label: "Delete Row", icon: <Minus className="w-4 h-4" />, action: handleDeleteRow },
+      { label: "Add Column Left", icon: <ArrowLeft className="w-4 h-4" />, action: handleAddColumnLeft },
+      { label: "Add Column Right", icon: <ArrowRight className="w-4 h-4" />, action: handleAddColumnRight },
+      { label: "Delete Column", icon: <Minus className="w-4 h-4" />, action: handleDeleteColumn },
+      { label: "Delete Table", icon: <Trash2 className="w-4 h-4" />, action: handleDeleteTable, divider: true },
+    ] : []),
     
     // Formatting (if selection exists)
     ...(hasSelection ? [
@@ -248,14 +299,16 @@ export function ContextMenu({ editor, position, onClose, onAIEdit }: ContextMenu
       { label: "Strikethrough", icon: <Strikethrough className="w-4 h-4" />, action: handleStrike, divider: true },
     ] : []),
     
-    // Block formatting
-    { label: "Heading 1", icon: <Heading1 className="w-4 h-4" />, action: () => handleHeading(1) },
-    { label: "Heading 2", icon: <Heading2 className="w-4 h-4" />, action: () => handleHeading(2) },
-    { label: "Heading 3", icon: <Heading3 className="w-4 h-4" />, action: () => handleHeading(3), divider: true },
-    { label: "Bullet List", icon: <List className="w-4 h-4" />, action: handleBulletList },
-    { label: "Numbered List", icon: <ListOrdered className="w-4 h-4" />, action: handleOrderedList },
-    { label: "Quote", icon: <Quote className="w-4 h-4" />, action: handleBlockquote },
-    { label: "Code Block", icon: <Code className="w-4 h-4" />, action: handleCodeBlock, divider: true },
+    // Block formatting (hide when in table to reduce menu length)
+    ...(!isInTable ? [
+      { label: "Heading 1", icon: <Heading1 className="w-4 h-4" />, action: () => handleHeading(1) },
+      { label: "Heading 2", icon: <Heading2 className="w-4 h-4" />, action: () => handleHeading(2) },
+      { label: "Heading 3", icon: <Heading3 className="w-4 h-4" />, action: () => handleHeading(3), divider: true },
+      { label: "Bullet List", icon: <List className="w-4 h-4" />, action: handleBulletList },
+      { label: "Numbered List", icon: <ListOrdered className="w-4 h-4" />, action: handleOrderedList },
+      { label: "Quote", icon: <Quote className="w-4 h-4" />, action: handleBlockquote },
+      { label: "Code Block", icon: <Code className="w-4 h-4" />, action: handleCodeBlock, divider: true },
+    ] : []),
     
     // Other actions
     { label: "Clear Formatting", icon: <Type className="w-4 h-4" />, action: handleClearFormatting, disabled: !hasSelection },

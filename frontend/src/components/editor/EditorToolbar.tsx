@@ -19,9 +19,10 @@ import {
   Undo,
   Redo,
   Languages,
+  Table,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { filesApi } from "@/lib/api";
 import { TranslateModal } from "./TranslateModal";
 import { useAIStore } from "@/lib/store";
@@ -35,6 +36,27 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [showTranslateModal, setShowTranslateModal] = useState(false);
+  const [showTablePicker, setShowTablePicker] = useState(false);
+  const [hoveredTableSize, setHoveredTableSize] = useState({ rows: 0, cols: 0 });
+  const tablePickerRef = useRef<HTMLDivElement>(null);
+
+  // Close table picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (tablePickerRef.current && !tablePickerRef.current.contains(e.target as Node)) {
+        setShowTablePicker(false);
+        setHoveredTableSize({ rows: 0, cols: 0 });
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const insertTable = useCallback((rows: number, cols: number) => {
+    editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+    setShowTablePicker(false);
+    setHoveredTableSize({ rows: 0, cols: 0 });
+  }, [editor]);
 
   const addImage = useCallback(async () => {
     const input = document.createElement("input");
@@ -279,6 +301,64 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       <ToolbarButton onClick={addImage} title="Add Image">
         <Image className="w-4 h-4" />
       </ToolbarButton>
+
+      {/* Table with size picker */}
+      <div className="relative" ref={tablePickerRef}>
+        <ToolbarButton
+          onClick={() => setShowTablePicker(!showTablePicker)}
+          isActive={showTablePicker}
+          title="Insert Table"
+        >
+          <Table className="w-4 h-4" />
+        </ToolbarButton>
+
+        {showTablePicker && (
+          <div className="absolute top-full left-0 mt-2 p-3 bg-[#252525] border border-[#373737] rounded-lg shadow-xl z-20">
+            <div className="mb-2 text-center">
+              <span className="text-sm text-[#e3e3e3]">
+                {hoveredTableSize.rows > 0 && hoveredTableSize.cols > 0
+                  ? `${hoveredTableSize.rows} × ${hoveredTableSize.cols}`
+                  : "Select table size"}
+              </span>
+            </div>
+            
+            <div 
+              className="grid gap-1"
+              style={{ gridTemplateColumns: "repeat(8, 1fr)" }}
+              onMouseLeave={() => setHoveredTableSize({ rows: 0, cols: 0 })}
+            >
+              {Array.from({ length: 8 }).map((_, rowIndex) =>
+                Array.from({ length: 8 }).map((_, colIndex) => {
+                  const isHighlighted =
+                    rowIndex < hoveredTableSize.rows && colIndex < hoveredTableSize.cols;
+
+                  return (
+                    <button
+                      key={`${rowIndex}-${colIndex}`}
+                      onMouseEnter={() => setHoveredTableSize({ rows: rowIndex + 1, cols: colIndex + 1 })}
+                      onClick={() => insertTable(rowIndex + 1, colIndex + 1)}
+                      className={`w-5 h-5 rounded-sm border transition-all ${
+                        isHighlighted
+                          ? "bg-blue-500 border-blue-400"
+                          : "bg-[#373737] hover:bg-[#454545] border-[#454545]"
+                      }`}
+                    />
+                  );
+                })
+              )}
+            </div>
+
+            <div className="mt-2 pt-2 border-t border-[#373737] flex justify-center">
+              <button
+                onClick={() => insertTable(3, 3)}
+                className="text-xs text-[#9b9b9b] hover:text-[#e3e3e3] transition-colors"
+              >
+                Quick insert 3×3
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {aiEnabled && (
         <>

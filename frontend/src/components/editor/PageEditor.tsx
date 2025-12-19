@@ -19,6 +19,7 @@ import { ResizableImage } from "./ResizableImage";
 import { CustomCodeBlock, CustomBlockquote } from "./CustomExtensions";
 import { AISelectionPopup } from "../ai/AISelectionPopup";
 import { ContextMenu } from "./ContextMenu";
+import { TableToolbar } from "./TableToolbar";
 import { useAIStore } from "@/lib/store";
 
 interface PageEditorProps {
@@ -299,6 +300,9 @@ export function PageEditor({
       </AnimatePresence>
 
       <EditorContent editor={editor} />
+
+      {/* Table Toolbar */}
+      {editable && <TableToolbar editor={editor} />}
 
       {/* Context Menu */}
       <AnimatePresence>
