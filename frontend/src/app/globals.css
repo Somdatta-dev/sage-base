@@ -211,6 +211,65 @@ body {
   color: var(--foreground);
 }
 
+/* Table styles */
+.novel-editor .ProseMirror table {
+  @apply border-collapse w-full my-4;
+  border: 1px solid var(--border);
+}
+
+.novel-editor .ProseMirror table th,
+.novel-editor .ProseMirror table td {
+  @apply border px-3 py-2 text-left align-top;
+  border-color: var(--border);
+  min-width: 100px;
+}
+
+.novel-editor .ProseMirror table th {
+  @apply font-semibold;
+  background: var(--secondary);
+  color: var(--foreground);
+}
+
+.novel-editor .ProseMirror table td {
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.novel-editor .ProseMirror table tr:hover td {
+  background: var(--secondary);
+}
+
+.novel-editor .ProseMirror table .selectedCell {
+  background: rgba(35, 131, 226, 0.15);
+}
+
+.novel-editor .ProseMirror table .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 2px solid var(--primary);
+}
+
+/* Table resize handle */
+.novel-editor .ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background: var(--primary);
+  cursor: col-resize;
+}
+
+.novel-editor .ProseMirror .tableWrapper {
+  @apply overflow-x-auto my-4;
+}
+
+.novel-editor .ProseMirror table p {
+  @apply m-0;
+}
+
 /* Tippy.js tooltip styles */
 .tippy-box[data-theme~='slash-menu'] {
   background: transparent;

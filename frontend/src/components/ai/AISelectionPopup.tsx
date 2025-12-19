@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
-import { Sparkles, Send, Loader2, X, Wand2, GripHorizontal } from "lucide-react";
+import { Sparkles, Send, Loader2, X, Wand2, GripHorizontal, Languages, ChevronRight } from "lucide-react";
 import { aiApi } from "@/lib/api";
 import { useAIStore } from "@/lib/store";
 
@@ -13,6 +13,16 @@ interface AISelectionPopupProps {
   onReplace: (newText: string) => void;
 }
 
+// Quick translate languages
+const QUICK_TRANSLATE_LANGUAGES = [
+  { code: "es", name: "Spanish", flag: "🇪🇸" },
+  { code: "fr", name: "French", flag: "🇫🇷" },
+  { code: "de", name: "German", flag: "🇩🇪" },
+  { code: "zh", name: "Chinese", flag: "🇨🇳" },
+  { code: "ja", name: "Japanese", flag: "🇯🇵" },
+  { code: "pt", name: "Portuguese", flag: "🇵🇹" },
+];
+
 export function AISelectionPopup({
   selectedText,
   position,
@@ -22,6 +32,9 @@ export function AISelectionPopup({
   const { aiEnabled } = useAIStore();
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showTranslateMenu, setShowTranslateMenu] = useState(false);
+  const [allLanguages, setAllLanguages] = useState<Record<string, string>>({});
+  const [translatingTo, setTranslatingTo] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const dragControls = useDragControls();
@@ -85,6 +98,34 @@ export function AISelectionPopup({
       console.error("Failed to edit text:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTranslate = async (languageCode: string, languageName: string) => {
+    if (loading || !aiEnabled) return;
+
+    setLoading(true);
+    setTranslatingTo(languageName);
+
+    try {
+      const response = await aiApi.translate(selectedText, languageCode);
+      onReplace(response.translated_text);
+    } catch (error) {
+      console.error("Failed to translate:", error);
+    } finally {
+      setLoading(false);
+      setTranslatingTo(null);
+      setShowTranslateMenu(false);
+    }
+  };
+
+  const loadAllLanguages = async () => {
+    if (Object.keys(allLanguages).length > 0) return;
+    try {
+      const response = await aiApi.getTranslateLanguages();
+      setAllLanguages(response.languages);
+    } catch (error) {
+      console.error("Failed to load languages:", error);
     }
   };
 
@@ -168,6 +209,68 @@ export function AISelectionPopup({
             ))}
           </div>
 
+          {/* Translate Section */}
+          <div className="mb-2 border-t border-[#373737] pt-2">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Languages className="w-3 h-3 text-blue-400" />
+              <span className="text-xs text-[#6b6b6b]">Translate to</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {QUICK_TRANSLATE_LANGUAGES.map((lang) => (
+                <motion.button
+                  key={lang.code}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleTranslate(lang.code, lang.name)}
+                  disabled={loading || !aiEnabled}
+                  className="px-2 py-1 text-xs rounded-full bg-[#2d2d2d] hover:bg-blue-500/20 text-[#9b9b9b] hover:text-blue-400 transition-colors disabled:opacity-50 flex items-center gap-1"
+                >
+                  <span>{lang.flag}</span>
+                  <span>{lang.name}</span>
+                </motion.button>
+              ))}
+              <div className="relative">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setShowTranslateMenu(!showTranslateMenu);
+                    loadAllLanguages();
+                  }}
+                  disabled={loading || !aiEnabled}
+                  className="px-2 py-1 text-xs rounded-full bg-[#2d2d2d] hover:bg-[#373737] text-[#9b9b9b] hover:text-[#e3e3e3] transition-colors disabled:opacity-50 flex items-center gap-0.5"
+                >
+                  More
+                  <ChevronRight className={`w-3 h-3 transition-transform ${showTranslateMenu ? 'rotate-90' : ''}`} />
+                </motion.button>
+                
+                {/* Extended language menu */}
+                <AnimatePresence>
+                  {showTranslateMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="absolute left-0 top-full mt-1 w-40 max-h-48 overflow-y-auto bg-[#252525] border border-[#373737] rounded-lg shadow-xl z-10"
+                    >
+                      {Object.entries(allLanguages)
+                        .filter(([code]) => !QUICK_TRANSLATE_LANGUAGES.some(l => l.code === code))
+                        .map(([code, name]) => (
+                          <button
+                            key={code}
+                            onClick={() => handleTranslate(code, name)}
+                            className="w-full px-3 py-1.5 text-xs text-left text-[#9b9b9b] hover:bg-[#373737] hover:text-[#e3e3e3] transition-colors"
+                          >
+                            {name}
+                          </button>
+                        ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+
           {/* Custom prompt input */}
           <form onSubmit={handleSubmit} className="flex gap-2">
             <input
@@ -209,9 +312,15 @@ export function AISelectionPopup({
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 >
-                  <Sparkles className="w-6 h-6 text-purple-400" />
+                  {translatingTo ? (
+                    <Languages className="w-6 h-6 text-blue-400" />
+                  ) : (
+                    <Sparkles className="w-6 h-6 text-purple-400" />
+                  )}
                 </motion.div>
-                <span className="text-sm text-[#9b9b9b]">Editing...</span>
+                <span className="text-sm text-[#9b9b9b]">
+                  {translatingTo ? `Translating to ${translatingTo}...` : "Editing..."}
+                </span>
               </div>
             </motion.div>
           )}

@@ -21,6 +21,8 @@ from app.services.agent import (
     chat_with_agent,
     summarize_page_content,
     edit_text_with_ai,
+    translate_text_with_ai,
+    get_supported_languages,
     is_ai_configured,
     clear_session,
     store_uploaded_document,
@@ -81,6 +83,23 @@ class EditTextRequest(BaseModel):
 class EditTextResponse(BaseModel):
     edited_text: str
     original_text: str
+
+
+class TranslateRequest(BaseModel):
+    text: str
+    target_language: str
+    source_language: Optional[str] = "auto"
+
+
+class TranslateResponse(BaseModel):
+    translated_text: str
+    original_text: str
+    target_language: str
+    target_language_name: str
+
+
+class SupportedLanguagesResponse(BaseModel):
+    languages: dict
 
 
 @router.get("/status", response_model=AIStatusResponse)
@@ -357,6 +376,55 @@ async def edit_text(
     return EditTextResponse(
         edited_text=edited_text,
         original_text=request.text,
+    )
+
+
+@router.get("/translate/languages", response_model=SupportedLanguagesResponse)
+async def get_translate_languages(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the list of supported languages for translation.
+    """
+    return SupportedLanguagesResponse(languages=get_supported_languages())
+
+
+@router.post("/translate", response_model=TranslateResponse)
+async def translate_text(
+    request: TranslateRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Translate text to a target language using AI.
+    
+    Supports translation of selected text or full page content.
+    """
+    status = is_ai_configured()
+    if not status["chat_enabled"]:
+        raise HTTPException(
+            status_code=503,
+            detail="AI translation is not available. Please configure OPENAI_API_KEY.",
+        )
+    
+    # Validate target language
+    supported_langs = get_supported_languages()
+    if request.target_language not in supported_langs:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported target language: {request.target_language}",
+        )
+    
+    translated_text = await translate_text_with_ai(
+        request.text,
+        request.target_language,
+        request.source_language,
+    )
+    
+    return TranslateResponse(
+        translated_text=translated_text,
+        original_text=request.text,
+        target_language=request.target_language,
+        target_language_name=supported_langs[request.target_language],
     )
 
 

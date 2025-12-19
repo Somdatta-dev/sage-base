@@ -211,6 +211,17 @@ interface AIEditTextResponse {
   original_text: string;
 }
 
+interface AITranslateResponse {
+  translated_text: string;
+  original_text: string;
+  target_language: string;
+  target_language_name: string;
+}
+
+interface SupportedLanguagesResponse {
+  languages: Record<string, string>;
+}
+
 export const aiApi = {
   status: (): Promise<AIStatusResponse> => fetchWithAuth("/api/ai/status"),
   
@@ -262,5 +273,18 @@ export const aiApi = {
   clearSession: (sessionId: string = "default") =>
     fetchWithAuth(`/api/ai/clear-session?session_id=${sessionId}`, {
       method: "POST",
+    }),
+  
+  getTranslateLanguages: (): Promise<SupportedLanguagesResponse> =>
+    fetchWithAuth("/api/ai/translate/languages"),
+  
+  translate: (text: string, targetLanguage: string, sourceLanguage: string = "auto"): Promise<AITranslateResponse> =>
+    fetchWithAuth("/api/ai/translate", {
+      method: "POST",
+      body: JSON.stringify({
+        text,
+        target_language: targetLanguage,
+        source_language: sourceLanguage,
+      }),
     }),
 };

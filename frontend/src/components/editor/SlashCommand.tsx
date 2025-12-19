@@ -16,6 +16,7 @@ import {
   Quote,
   Minus,
   Image as ImageIcon,
+  Table,
   type LucideIcon,
 } from "lucide-react";
 
@@ -145,6 +146,19 @@ const commands: CommandItem[] = [
     command: ({ editor, range }) => {
       // Divider already creates an empty paragraph after it
       editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+    },
+  },
+  {
+    title: "Table",
+    description: "Insert a table with rows and columns",
+    icon: Table,
+    command: ({ editor, range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+        .run();
     },
   },
   {

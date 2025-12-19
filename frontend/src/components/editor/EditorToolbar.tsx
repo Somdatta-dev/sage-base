@@ -18,18 +18,23 @@ import {
   Minus,
   Undo,
   Redo,
+  Languages,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCallback, useState } from "react";
 import { filesApi } from "@/lib/api";
+import { TranslateModal } from "./TranslateModal";
+import { useAIStore } from "@/lib/store";
 
 interface EditorToolbarProps {
   editor: Editor;
 }
 
 export function EditorToolbar({ editor }: EditorToolbarProps) {
+  const { aiEnabled } = useAIStore();
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
+  const [showTranslateModal, setShowTranslateModal] = useState(false);
 
   const addImage = useCallback(async () => {
     const input = document.createElement("input");
@@ -69,6 +74,24 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
     setShowLinkInput(false);
     setLinkUrl("");
   }, [editor, linkUrl]);
+
+  // Get all text content from the editor for translation
+  const getPageContent = useCallback(() => {
+    return editor.state.doc.textContent;
+  }, [editor]);
+
+  // Handle translated page content - replaces entire document text
+  const handlePageTranslate = useCallback((translatedText: string) => {
+    // Replace the entire content with translated text
+    // This creates a simple paragraph structure
+    editor
+      .chain()
+      .focus()
+      .selectAll()
+      .deleteSelection()
+      .insertContent(translatedText)
+      .run();
+  }, [editor]);
 
   const ToolbarButton = ({
     onClick,
@@ -256,6 +279,27 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       <ToolbarButton onClick={addImage} title="Add Image">
         <Image className="w-4 h-4" />
       </ToolbarButton>
+
+      {aiEnabled && (
+        <>
+          <div className="w-px h-5 bg-[#373737] mx-1" />
+          <ToolbarButton
+            onClick={() => setShowTranslateModal(true)}
+            title="Translate Page"
+          >
+            <Languages className="w-4 h-4" />
+          </ToolbarButton>
+        </>
+      )}
+
+      {/* Translate Modal */}
+      <TranslateModal
+        isOpen={showTranslateModal}
+        onClose={() => setShowTranslateModal(false)}
+        onTranslate={handlePageTranslate}
+        textToTranslate={getPageContent()}
+        mode="page"
+      />
     </div>
   );
 }

@@ -7,6 +7,10 @@ import Link from "@tiptap/extension-link";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Typography from "@tiptap/extension-typography";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EditorToolbar } from "./EditorToolbar";
@@ -74,6 +78,13 @@ export function PageEditor({
         nested: true,
         HTMLAttributes: { class: "flex gap-2 items-start" },
       }),
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: { class: "table-wrapper" },
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
       SlashCommand,
     ],
     content: content as JSONContent,

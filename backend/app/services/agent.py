@@ -448,3 +448,92 @@ def is_ai_configured() -> Dict[str, bool]:
         "knowledge_search_enabled": bool(settings.OPENAI_API_KEY),
     }
 
+
+# Supported languages for translation
+SUPPORTED_LANGUAGES = {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "ru": "Russian",
+    "zh": "Chinese (Simplified)",
+    "zh-TW": "Chinese (Traditional)",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "ar": "Arabic",
+    "hi": "Hindi",
+    "bn": "Bengali",
+    "nl": "Dutch",
+    "pl": "Polish",
+    "tr": "Turkish",
+    "vi": "Vietnamese",
+    "th": "Thai",
+    "id": "Indonesian",
+    "ms": "Malay",
+    "sv": "Swedish",
+    "da": "Danish",
+    "no": "Norwegian",
+    "fi": "Finnish",
+    "el": "Greek",
+    "he": "Hebrew",
+    "uk": "Ukrainian",
+    "cs": "Czech",
+    "ro": "Romanian",
+    "hu": "Hungarian",
+}
+
+
+def get_supported_languages() -> Dict[str, str]:
+    """Return the dictionary of supported language codes and names."""
+    return SUPPORTED_LANGUAGES
+
+
+async def translate_text_with_ai(text: str, target_language: str, source_language: str = "auto") -> str:
+    """
+    Translate text to the target language using the LLM.
+    
+    Args:
+        text: The text to translate
+        target_language: The target language code (e.g., 'es', 'fr', 'de')
+        source_language: The source language code or 'auto' for auto-detection
+    
+    Returns:
+        The translated text
+    """
+    llm = get_llm()
+    if not llm:
+        return text  # Return original if AI not available
+    
+    target_lang_name = SUPPORTED_LANGUAGES.get(target_language, target_language)
+    
+    source_context = ""
+    if source_language != "auto" and source_language in SUPPORTED_LANGUAGES:
+        source_lang_name = SUPPORTED_LANGUAGES[source_language]
+        source_context = f"The source text is in {source_lang_name}. "
+    
+    try:
+        messages = [
+            SystemMessage(content=f"""You are an expert translator. 
+{source_context}Translate the given text accurately to {target_lang_name}.
+
+Rules:
+- Preserve the original meaning, tone, and style
+- Keep any formatting (markdown, code blocks, etc.) intact
+- Do not add explanations or notes - only return the translated text
+- Maintain paragraph breaks and list structures
+- For technical terms that are commonly left in English (like programming terms), keep them in English if appropriate for the target language
+- If the text contains code, translate only comments and strings, not the code itself"""),
+            HumanMessage(content=f"""Translate the following text to {target_lang_name}:
+
+{text}"""),
+        ]
+        
+        response = await llm.ainvoke(messages)
+        translated = response.content.strip()
+        
+        return translated
+    except Exception as e:
+        return f"Translation error: {str(e)}"
+
