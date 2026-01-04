@@ -1,9 +1,4 @@
-# Production Docker Compose for SageBase on Coolify
-# This uses a unified container for Backend + Frontend
-# Databases (PostgreSQL and Qdrant) should be configured as separate services in Coolify
-
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:18-alpine
     container_name: sagebase-postgres
@@ -13,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sagebase_secret}
       POSTGRES_DB: ${POSTGRES_DB:-sagebase}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "5437:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,14 +19,13 @@ services:
     networks:
       - sagebase_network
 
-  # Qdrant Vector Database
   qdrant:
     image: qdrant/qdrant:latest
     container_name: sagebase-qdrant
     restart: unless-stopped
     ports:
-      - "${QDRANT_PORT:-6333}:6333"
-      - "${QDRANT_GRPC_PORT:-6334}:6334"
+      - "6337:6333"
+      - "6338:6334"
     volumes:
       - qdrant_data:/qdrant/storage
     environment:
@@ -39,47 +33,25 @@ services:
     networks:
       - sagebase_network
 
-  # Unified Application Container (Backend + Frontend)
-  app:
+  backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: ${API_DOMAIN:-http://localhost:8787}
-        BUILD_ID: ${BUILD_ID:-production-${CI_COMMIT_SHA:-local}}
-    container_name: sagebase-app
+    container_name: sagebase-backend
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-3000}:3000"
-      - "${API_PORT:-8787}:8787"
+      - "8787:8787"
     environment:
-      # Database
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-sagebase}:${POSTGRES_PASSWORD:-sagebase_secret}@postgres:5432/${POSTGRES_DB:-sagebase}
-
-      # Security
-      SECRET_KEY: ${SECRET_KEY}
-
-      # API Configuration
-      API_DOMAIN: ${API_DOMAIN}
-      WEBSITE_DOMAIN: ${WEBSITE_DOMAIN}
-
-      # Vector Database
+      SECRET_KEY: ${SECRET_KEY:-your-super-secret-key-change-in-production}
+      API_DOMAIN: ${API_DOMAIN:-http://localhost:8787}
+      WEBSITE_DOMAIN: ${WEBSITE_DOMAIN:-http://localhost:3737}
       QDRANT_HOST: qdrant
       QDRANT_PORT: 6333
-
-      # AI Configuration
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-
-      # Storage
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       UPLOAD_DIR: /app/uploads
-
-      # Admin User
       DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@sagebase.com}
-      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD}
-
-      # Next.js
-      NEXT_PUBLIC_API_URL: ${API_DOMAIN}
-      NODE_ENV: production
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-Admin123!}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
@@ -87,12 +59,23 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8787/api/health"]
-      interval: 30s
-      timeout: 10s
-      start_period: 60s
-      retries: 3
+    networks:
+      - sagebase_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${API_DOMAIN:-http://localhost:8787}
+    container_name: sagebase-frontend
+    restart: unless-stopped
+    ports:
+      - "3737:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${API_DOMAIN:-http://localhost:8787}
+    depends_on:
+      - backend
     networks:
       - sagebase_network
 
