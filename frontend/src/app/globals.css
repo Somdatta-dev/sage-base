@@ -3,25 +3,29 @@
 @tailwind utilities;
 
 :root {
-  /* Notion-inspired dark theme */
-  --background: #191919;
-  --foreground: #e3e3e3;
-  --card: #202020;
-  --card-foreground: #e3e3e3;
-  --primary: #2383e2;
-  --primary-foreground: #ffffff;
-  --secondary: #2d2d2d;
-  --secondary-foreground: #e3e3e3;
-  --muted: #2d2d2d;
-  --muted-foreground: #9b9b9b;
-  --accent: #373737;
-  --accent-foreground: #e3e3e3;
-  --destructive: #eb5757;
-  --border: #373737;
-  --input: #2d2d2d;
-  --ring: #2383e2;
-  
-  /* Sidebar */
+  /* Notion-inspired dark theme - HSL values for Tailwind */
+  --background: 0 0% 10%;
+  --foreground: 0 0% 89%;
+  --card: 0 0% 13%;
+  --card-foreground: 0 0% 89%;
+  --primary: 207 79% 51%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 18%;
+  --secondary-foreground: 0 0% 89%;
+  --muted: 0 0% 18%;
+  --muted-foreground: 0 0% 61%;
+  --accent: 0 0% 22%;
+  --accent-foreground: 0 0% 89%;
+  --destructive: 0 68% 63%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 22%;
+  --input: 0 0% 18%;
+  --ring: 207 79% 51%;
+  --popover: 0 0% 13%;
+  --popover-foreground: 0 0% 89%;
+  --radius: 0.5rem;
+
+  /* Sidebar - hex values for legacy usage */
   --sidebar-bg: #202020;
   --sidebar-hover: #2d2d2d;
   --sidebar-active: #373737;
@@ -42,8 +46,8 @@ body {
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
   font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -89,28 +93,28 @@ body {
 
 .novel-editor .ProseMirror h1 {
   @apply text-4xl font-bold mb-4;
-  color: var(--foreground);
+  color: hsl(var(--foreground));
 }
 
 .novel-editor .ProseMirror h2 {
   @apply text-2xl font-semibold mb-3 mt-8;
-  color: var(--foreground);
+  color: hsl(var(--foreground));
 }
 
 .novel-editor .ProseMirror h3 {
   @apply text-xl font-semibold mb-2 mt-6;
-  color: var(--foreground);
+  color: hsl(var(--foreground));
 }
 
 .novel-editor .ProseMirror p {
-  color: var(--foreground);
+  color: hsl(var(--foreground));
   line-height: 1.7;
 }
 
 .novel-editor .ProseMirror ul,
 .novel-editor .ProseMirror ol {
   @apply pl-6;
-  color: var(--foreground);
+  color: hsl(var(--foreground));
 }
 
 .novel-editor .ProseMirror ul {
@@ -156,18 +160,18 @@ body {
 .novel-editor .ProseMirror hr {
   @apply my-6;
   border: none;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid hsl(var(--border));
 }
 
 .novel-editor .ProseMirror a {
-  color: var(--foreground);
+  color: hsl(var(--foreground));
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-color: #9b9b9b;
 }
 
 .novel-editor .ProseMirror a:hover {
-  text-decoration-color: var(--foreground);
+  text-decoration-color: hsl(var(--foreground));
 }
 
 /* Placeholder */
@@ -208,35 +212,35 @@ body {
 .novel-editor .ProseMirror blockquote {
   @apply pl-4 my-4;
   border-left: 3px solid #373737;
-  color: var(--foreground);
+  color: hsl(var(--foreground));
 }
 
 /* Table styles */
 .novel-editor .ProseMirror table {
   @apply border-collapse w-full my-4;
-  border: 1px solid var(--border);
+  border: 1px solid hsl(var(--border));
 }
 
 .novel-editor .ProseMirror table th,
 .novel-editor .ProseMirror table td {
   @apply border px-3 py-2 text-left align-top;
-  border-color: var(--border);
+  border-color: hsl(var(--border));
   min-width: 100px;
 }
 
 .novel-editor .ProseMirror table th {
   @apply font-semibold;
-  background: var(--secondary);
-  color: var(--foreground);
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
 }
 
 .novel-editor .ProseMirror table td {
-  background: var(--card);
-  color: var(--foreground);
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
 }
 
 .novel-editor .ProseMirror table tr:hover td {
-  background: var(--secondary);
+  background: hsl(var(--secondary));
 }
 
 .novel-editor .ProseMirror table .selectedCell {
@@ -248,7 +252,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  border: 2px solid var(--primary);
+  border: 2px solid hsl(var(--primary));
 }
 
 /* Table resize handle */
@@ -258,7 +262,7 @@ body {
   top: 0;
   bottom: -2px;
   width: 4px;
-  background: var(--primary);
+  background: hsl(var(--primary));
   cursor: col-resize;
 }
 
