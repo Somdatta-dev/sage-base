@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { Menu, Search, MoreHorizontal, Sparkles } from "lucide-react";
 import { useUIStore, useSpaceStore, useAIStore } from "@/lib/store";
 
@@ -53,15 +54,16 @@ export function Header() {
           {breadcrumb.map((item, index) => (
             <div key={item.href} className="flex items-center gap-1">
               {index > 0 && <span className="text-[#4b4b4b]">/</span>}
-              <span
-                className={
-                  index === breadcrumb.length - 1
-                    ? "text-[#e3e3e3]"
-                    : "text-[#9b9b9b] hover:text-[#e3e3e3] cursor-pointer"
-                }
-              >
-                {item.label}
-              </span>
+              {index === breadcrumb.length - 1 ? (
+                <span className="text-[#e3e3e3]">{item.label}</span>
+              ) : (
+                <Link
+                  href={item.href}
+                  className="text-[#9b9b9b] hover:text-[#e3e3e3] transition-colors"
+                >
+                  {item.label}
+                </Link>
+              )}
             </div>
           ))}
         </nav>

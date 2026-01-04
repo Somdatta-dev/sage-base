@@ -70,26 +70,26 @@ export function PageSettingsModal({
             value={editMode}
             onValueChange={(value) => setEditMode(value as EditMode)}
           >
-            <div className="flex items-start space-x-3 space-y-0 p-4 border rounded-lg hover:bg-gray-50">
+            <div className="flex items-start space-x-3 space-y-0 p-4 border border-[#373737] rounded-lg hover:bg-[#2d2d2d] transition-colors">
               <RadioGroupItem value="anyone" id="anyone" />
               <div className="flex-1">
-                <Label htmlFor="anyone" className="font-medium cursor-pointer">
+                <Label htmlFor="anyone" className="font-medium cursor-pointer text-[#e3e3e3]">
                   📝 Anyone can edit
                 </Label>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-[#9b9b9b] mt-1">
                   Collaborative mode. Any authenticated user can edit and publish
                   changes directly.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start space-x-3 space-y-0 p-4 border rounded-lg hover:bg-gray-50 mt-3">
+            <div className="flex items-start space-x-3 space-y-0 p-4 border border-[#373737] rounded-lg hover:bg-[#2d2d2d] transition-colors mt-3">
               <RadioGroupItem value="approval" id="approval" />
               <div className="flex-1">
-                <Label htmlFor="approval" className="font-medium cursor-pointer">
+                <Label htmlFor="approval" className="font-medium cursor-pointer text-[#e3e3e3]">
                   🔒 Requires approval
                 </Label>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-[#9b9b9b] mt-1">
                   Controlled mode. Other users can submit update requests which you
                   must approve before publishing.
                 </p>
