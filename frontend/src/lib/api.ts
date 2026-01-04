@@ -16,12 +16,12 @@ function getToken(): string | null {
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const token = getToken();
-  
+
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...options.headers,
   };
-  
+
   if (token) {
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
@@ -74,19 +74,19 @@ export const authApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-    
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: "Login failed" }));
       throw new Error(extractErrorMessage(error));
     }
-    
+
     return response.json();
   },
-  
+
   logout: () => fetchWithAuth("/api/auth/logout", { method: "POST" }),
-  
+
   me: (): Promise<User> => fetchWithAuth("/api/auth/me"),
-  
+
   changePassword: (currentPassword: string, newPassword: string) =>
     fetchWithAuth("/api/auth/change-password", {
       method: "POST",
@@ -168,6 +168,11 @@ export const pagesApi = {
       method: "PATCH",
       body: JSON.stringify({ review_message: reviewMessage }),
     }),
+  appendContent: (id: number, content: string) =>
+    fetchWithAuth(`/api/pages/${id}/append`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }),
 };
 
 // Files API
@@ -176,22 +181,22 @@ export const filesApi = {
     const token = getToken();
     const formData = new FormData();
     formData.append("file", file);
-    
+
     const headers: HeadersInit = {};
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
-    
+
     const response = await fetch(`${API_BASE}/api/files/upload`, {
       method: "POST",
       headers,
       body: formData,
     });
-    
+
     if (!response.ok) {
       throw new Error("Upload failed");
     }
-    
+
     return response.json();
   },
   delete: (path: string) => fetchWithAuth(`/api/files/${path}`, { method: "DELETE" }),
@@ -259,7 +264,7 @@ interface SupportedLanguagesResponse {
 
 export const aiApi = {
   status: (): Promise<AIStatusResponse> => fetchWithAuth("/api/ai/status"),
-  
+
   chat: (message: string, spaceId?: number, pageId?: number, documentId?: string, sessionId: string = "default"): Promise<AIChatResponse> =>
     fetchWithAuth("/api/ai/chat", {
       method: "POST",
@@ -271,11 +276,11 @@ export const aiApi = {
         document_id: documentId,
       }),
     }),
-  
+
   uploadDocument: async (file: File): Promise<DocumentUploadResponse> => {
     const formData = new FormData();
     formData.append("file", file);
-    
+
     const token = getToken();
     const response = await fetch(`${API_BASE}/api/ai/upload-document`, {
       method: "POST",
@@ -284,35 +289,35 @@ export const aiApi = {
       },
       body: formData,
     });
-    
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.detail || "Failed to upload document");
     }
-    
+
     return response.json();
   },
-  
+
   summarize: (pageId: number): Promise<AISummarizeResponse> =>
     fetchWithAuth("/api/ai/summarize", {
       method: "POST",
       body: JSON.stringify({ page_id: pageId }),
     }),
-  
+
   editText: (text: string, instruction: string): Promise<AIEditTextResponse> =>
     fetchWithAuth("/api/ai/edit-text", {
       method: "POST",
       body: JSON.stringify({ text, instruction }),
     }),
-  
+
   clearSession: (sessionId: string = "default") =>
     fetchWithAuth(`/api/ai/clear-session?session_id=${sessionId}`, {
       method: "POST",
     }),
-  
+
   getTranslateLanguages: (): Promise<SupportedLanguagesResponse> =>
     fetchWithAuth("/api/ai/translate/languages"),
-  
+
   translate: (text: string, targetLanguage: string, sourceLanguage: string = "auto"): Promise<AITranslateResponse> =>
     fetchWithAuth("/api/ai/translate", {
       method: "POST",

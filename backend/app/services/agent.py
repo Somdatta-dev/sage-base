@@ -46,12 +46,15 @@ CRITICAL - Tool Usage Rules:
 - User says "save this as a page" or "add this to [space]"
 - A document_id is provided (shown as [Attached document: X])
 
-**Use edit_page_content tool when:**
-- User explicitly asks to "edit", "update", "change", or "modify" the page/code
-- User says "can you change it to..." referring to the current page
+**Use draft_content tool (PREFERRED for writing) when:**
 - User asks to "write a report", "add a section", "document this", "summarize results" while viewing a page
-- **IMPORTANT**: If the user's request implies adding content to the page (e.g. "write a report on X"), do NOT answer in the chat. Use this tool to put the content directly on the page.
-- **IMPORTANT**: If adding new content (like search results or a generated section), you MUST include the FULL text to be added in the instruction. Do NOT say "add the search results". Say "Append the following section: [Full Text Here]".
+- User wants to generate content that they might want to review first
+- **This is the BEST way to format answers for the user to copy/insert.**
+
+**Use edit_page_content tool when:**
+- User explicitly asks to "fix", "correct", "change X to Y" in the existing content
+- User says "can you change the title" or "fix the typo"
+- **Do NOT** use this for writing large new sections unless explicitly told to "put it directly on the page". Use draft_content instead.
 
 **Use search_knowledge_base ONLY when:**
 - User explicitly asks to "find", "search", or "look up" documents
@@ -277,6 +280,27 @@ async def create_page(space_id: int, title: str, topic: str, content_outline: Op
     outline_part = content_outline.replace(':', '::') if content_outline else ''
     return f"CREATE_PAGE:{space_id}:{title}:{topic}:{outline_part}"
 
+
+@tool
+async def draft_content(content: str) -> str:
+    """
+    Generate a draft of content for the user to review and insert.
+    
+    Use this tool when:
+    - User asks to "write a report", "draft a section", "generate content"
+    - User asks to "fix this page" or "rewrite this"
+    - You want to provide a large block of text/code for the user to add to the page
+    
+    The content will be shown to the user with an "Insert" button.
+    
+    Args:
+        content: The full markdown content to specific.
+    
+    Returns:
+        Confirmation that draft was created.
+    """
+    return "DRAFT_GENERATED"
+
 # Store for uploaded documents in memory (temporary storage for chat session)
 _uploaded_documents: Dict[str, Dict[str, Any]] = {}
 
@@ -311,7 +335,7 @@ def get_agent(session_id: str = "default"):
     
     # Create agent if not cached
     if session_id not in _agent_cache:
-        tools = [search_knowledge_base, web_search, summarize_page, edit_page_content, import_document_to_page, create_page]
+        tools = [search_knowledge_base, web_search, summarize_page, edit_page_content, import_document_to_page, create_page, draft_content]
         
         agent = create_react_agent(
             model=llm,

@@ -16,11 +16,12 @@ import {
   ChevronLeft,
   Paperclip,
   X,
-  Upload,
   FileUp,
+  Plus,
+  Check,
 } from "lucide-react";
 import { useAIStore } from "@/lib/store";
-import { aiApi } from "@/lib/api";
+import { aiApi, pagesApi } from "@/lib/api";
 
 interface Message {
   id: string;
@@ -41,12 +42,12 @@ interface AttachedDocument {
 }
 
 export function AISidebar() {
-  const { 
-    messages, 
-    addMessage, 
-    clearMessages, 
-    aiEnabled, 
-    aiSidebarOpen, 
+  const {
+    messages,
+    addMessage,
+    clearMessages,
+    aiEnabled,
+    aiSidebarOpen,
     setAISidebarOpen,
     pageContext,
     triggerPageReload,
@@ -54,6 +55,7 @@ export function AISidebar() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [inserting, setInserting] = useState(false);
   const [attachedDoc, setAttachedDoc] = useState<AttachedDocument | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -127,8 +129,8 @@ export function AISidebar() {
 
     try {
       const response = await aiApi.chat(
-        currentInput, 
-        pageContext?.spaceId, 
+        currentInput,
+        pageContext?.spaceId,
         pageContext?.pageId,
         currentDocId
       );
@@ -142,12 +144,12 @@ export function AISidebar() {
       };
 
       addMessage(assistantMessage);
-      
+
       // If AI edited a page, trigger reload
       if (response.page_edited) {
         triggerPageReload();
       }
-      
+
       // If AI created a page from document, could navigate or show link
       if (response.page_created && response.created_page_slug) {
         // Page was created - the response message will contain the details
@@ -162,6 +164,33 @@ export function AISidebar() {
       addMessage(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleInsertContent = async (content: string) => {
+    if (!pageContext || inserting) return;
+
+    setInserting(true);
+    try {
+      await pagesApi.appendContent(pageContext.pageId, content);
+      triggerPageReload();
+
+      addMessage({
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "✅ Content inserted successfully!",
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      console.error("Failed to insert content:", error);
+      addMessage({
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "❌ Failed to insert content. Please try again.",
+        timestamp: new Date(),
+      });
+    } finally {
+      setInserting(false);
     }
   };
 
@@ -369,7 +398,7 @@ export function AISidebar() {
                       How can I help?
                     </h3>
                     <p className="text-sm text-[#9b9b9b] mb-6">
-                      {pageContext 
+                      {pageContext
                         ? `I can help with "${pageContext.pageTitle}" or search your knowledge base.`
                         : "Search knowledge base, find info on the web, or summarize content."}
                     </p>
@@ -436,31 +465,64 @@ export function AISidebar() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        className={`flex ${
-                          message.role === "user" ? "justify-end" : "justify-start"
-                        }`}
+                        className={`flex ${message.role === "user" ? "justify-end" : "justify-start"
+                          }`}
                       >
                         <div
-                          className={`max-w-[85%] rounded-xl px-3 py-2 ${
-                            message.role === "user"
-                              ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-                              : "bg-[#2d2d2d] text-[#e3e3e3]"
-                          }`}
+                          className={`max-w-[85%] rounded-xl px-3 py-2 ${message.role === "user"
+                            ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                            : "bg-[#2d2d2d] text-[#e3e3e3]"
+                            }`}
                         >
                           {/* Tool calls indicator */}
                           {message.toolCalls && message.toolCalls.length > 0 && (
                             <div className="flex flex-wrap gap-1 mb-2">
-                              {message.toolCalls.map((tool, idx) => (
-                                <span
-                                  key={idx}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-[#373737]/50 text-[#9b9b9b]"
-                                >
-                                  {getToolIcon(tool.name)}
-                                  {tool.name.replace(/_/g, " ")}
-                                </span>
-                              ))}
+                              {message.toolCalls.map((tool, idx) => {
+                                if (tool.name === "draft_content") return null;
+                                return (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-[#373737]/50 text-[#9b9b9b]"
+                                  >
+                                    {getToolIcon(tool.name)}
+                                    {tool.name}
+                                  </span>
+                                );
+                              })}
                             </div>
                           )}
+
+                          {/* Draft Content Card */}
+                          {message.toolCalls && message.toolCalls.find(t => t.name === "draft_content") && (() => {
+                            const draft = message.toolCalls!.find(t => t.name === "draft_content")!;
+                            const content = draft.args?.content as string;
+                            if (!content) return null;
+                            return (
+                              <div className="mt-1 mb-3 bg-[#1a1a1a] border border-[#373737] rounded-lg overflow-hidden w-full">
+                                <div className="flex items-center justify-between px-3 py-2 bg-[#252525] border-b border-[#373737]">
+                                  <span className="text-xs font-medium text-[#e3e3e3] flex items-center gap-1.5">
+                                    <FileUp className="w-3 h-3 text-purple-400" /> Generated Draft
+                                  </span>
+                                  {pageContext && (
+                                    <button
+                                      onClick={() => handleInsertContent(content)}
+                                      disabled={inserting}
+                                      className="flex items-center gap-1.5 px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition-colors disabled:opacity-50"
+                                    >
+                                      {inserting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                                      Insert
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="p-3 max-h-60 overflow-y-auto text-xs prose prose-invert prose-sm">
+                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {content}
+                                  </ReactMarkdown>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
                           {/* Attachment indicator for user messages */}
                           {message.attachment && (
                             <div className="flex items-center gap-1 mb-1 text-xs opacity-80">
@@ -469,11 +531,13 @@ export function AISidebar() {
                             </div>
                           )}
                           {message.role === "assistant" ? (
-                            <div className="text-sm prose prose-sm prose-invert max-w-none prose-p:my-2 prose-p:leading-relaxed prose-headings:mt-4 prose-headings:mb-2 prose-headings:font-semibold prose-h2:text-base prose-h3:text-sm prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-code:bg-[#373737] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-purple-300 prose-code:text-xs prose-pre:bg-[#1a1a1a] prose-pre:border prose-pre:border-[#373737] prose-pre:rounded-lg prose-strong:text-purple-300 prose-strong:font-semibold first:prose-headings:mt-0">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {message.content}
-                              </ReactMarkdown>
-                            </div>
+                            (message.content !== "DRAFT_GENERATED") && (
+                              <div className="text-sm prose prose-sm prose-invert max-w-none prose-p:my-2 prose-p:leading-relaxed prose-headings:mt-4 prose-headings:mb-2 prose-headings:font-semibold prose-h2:text-base prose-h3:text-sm prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-code:bg-[#373737] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-purple-300 prose-code:text-xs prose-pre:bg-[#1a1a1a] prose-pre:border prose-pre:border-[#373737] prose-pre:rounded-lg prose-strong:text-purple-300 prose-strong:font-semibold first:prose-headings:mt-0">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {message.content}
+                                </ReactMarkdown>
+                              </div>
+                            )
                           ) : (
                             <div className="text-sm whitespace-pre-wrap">
                               {message.content}
@@ -565,7 +629,7 @@ export function AISidebar() {
                     onChange={handleFileUpload}
                     className="hidden"
                   />
-                  
+
                   {/* Attachment button */}
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -588,8 +652,8 @@ export function AISidebar() {
                       attachedDoc
                         ? "Ask about this document or say 'import to page'..."
                         : aiEnabled
-                        ? "Ask anything..."
-                        : "Configure OPENAI_API_KEY"
+                          ? "Ask anything..."
+                          : "Configure OPENAI_API_KEY"
                     }
                     disabled={!aiEnabled || loading}
                     className="flex-1 resize-none px-3 py-2 bg-[#2d2d2d] border border-[#373737] rounded-lg text-sm text-[#e3e3e3] placeholder-[#6b6b6b] focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"

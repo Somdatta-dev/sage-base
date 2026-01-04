@@ -18,6 +18,8 @@ from app.schemas.page import (
 )
 from app.services.embedding import update_page_embedding
 from app.services.diff import generate_content_diff
+from app.services.document_processor import get_document_processor
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -747,3 +749,79 @@ async def reject_update_request(
     await db.refresh(update_request)
 
     return UpdateRequestResponse.model_validate(update_request)
+
+
+class AppendContentRequest(BaseModel):
+    content: str
+
+
+@router.post("/{page_id}/append", response_model=PageResponse)
+async def append_page_content(
+    page_id: int,
+    request: AppendContentRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Append markdown content to a page.
+    """
+    # Fetch page
+    result = await db.execute(select(Page).where(Page.id == page_id))
+    page = result.scalar_one_or_none()
+    
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+        
+    # Check permissions
+    is_owner = page.author_id == current_user.id
+    is_admin = current_user.role == "admin"
+    can_edit = is_owner or is_admin or page.edit_mode == "anyone"
+    
+    if not can_edit:
+         raise HTTPException(status_code=403, detail="Permission denied")
+
+    # Process content
+    processor = get_document_processor()
+    # Convert new content to JSON
+    new_json = processor.convert_to_tiptap_json(request.content)
+    
+    # Merge
+    if not page.content_json or not page.content_json.get("content"):
+        page.content_json = new_json
+    else:
+        # Deep copy to ensure mutation is detected if needed, though simple dict assignment works usually
+        import copy
+        current_data = copy.deepcopy(page.content_json)
+        current_content = current_data.get("content", [])
+        new_content = new_json.get("content", [])
+        
+        # Append
+        current_content.extend(new_content)
+        current_data["content"] = current_content
+        
+        # Assign back
+        page.content_json = current_data
+        
+    # Update text representation
+    existing_text = page.content_text or ""
+    page.content_text = existing_text + "\n\n" + request.content
+    
+    page.updated_at = datetime.utcnow()
+    page.version += 1
+    
+    await db.commit()
+    await db.refresh(page)
+    
+    # Update embedding async
+    try:
+        await update_page_embedding(
+            page_id=page.id,
+            title=page.title,
+            content_text=page.content_text,
+            space_id=page.space_id
+        )
+    except:
+        pass
+    
+    return page
+
