@@ -16,9 +16,11 @@ BUILD_ID: ${BUILD_ID:-production}  # ✅ Valid
 
 ## What Changed
 
-1. ✅ **[docker-compose.yml](docker-compose.yml:49)** - Fixed BUILD_ID syntax
+1. ✅ **[docker-compose.yml](docker-compose.yml:47-48)** - Removed BUILD_ID from build args
 2. ✅ **[.env](.env:28)** - Added BUILD_ID and NIXPACKS_NODE_VERSION
 3. ✅ **[.env.example](.env.example:61-92)** - Added timeout settings and Nixpacks config
+4. ✅ **[start.sh](start.sh:17-30)** - Fixed PostgreSQL connection check
+5. ✅ **[Dockerfile](Dockerfile:53)** - Added postgresql-client for database checks
 
 ## How to Deploy on Coolify Now
 

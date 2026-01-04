@@ -16,7 +16,15 @@ trap cleanup SIGTERM SIGINT
 
 # Wait for database to be ready
 echo "⏳ Waiting for PostgreSQL..."
-until curl -s ${DATABASE_URL} > /dev/null 2>&1 || [ $? -eq 52 ]; do
+# Extract host and database from DATABASE_URL
+# Format: postgresql+asyncpg://user:pass@host:port/dbname
+DB_HOST=$(echo $DATABASE_URL | sed -E 's|.*@([^:/]+).*|\1|')
+DB_NAME=$(echo $DATABASE_URL | sed -E 's|.*/([^?]+).*|\1|')
+DB_USER=$(echo $DATABASE_URL | sed -E 's|.*://([^:]+):.*|\1|')
+
+# Wait for PostgreSQL to be ready
+until PGPASSWORD="${POSTGRES_PASSWORD:-sagebase_secret}" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c '\q' > /dev/null 2>&1; do
+    echo "Waiting for database connection..."
     sleep 2
 done
 echo "✅ PostgreSQL is ready"

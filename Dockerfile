@@ -50,6 +50,7 @@ WORKDIR /app
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
     libpq5 \
+    postgresql-client \
     nodejs \
     npm \
     curl \
