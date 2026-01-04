@@ -468,7 +468,8 @@ async def edit_text_with_ai(text: str, instruction: str) -> str:
         messages = [
             SystemMessage(content="""You are a helpful writing assistant. 
 Your task is to edit the given text according to the user's instruction.
-Only return the edited text, nothing else. Do not include explanations or quotes around the text.
+If the Original Text is empty or marked as (Empty page), treat the instruction as a request to generate new content.
+Only return the result text, nothing else. Do not include explanations or quotes around the text.
 Preserve the original formatting style (markdown, etc.) unless instructed otherwise."""),
             HumanMessage(content=f"""Original text:
 {text}

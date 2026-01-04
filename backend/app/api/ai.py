@@ -536,8 +536,8 @@ async def _perform_page_edit(
              return f"❌ Could not extract text from page '{page.title}'."
              
         # If we couldn't extract text from JSON but have content_text, use that
-        if not content_text:
-            content_text = " "
+        if not content_text or content_text.strip() == "":
+            content_text = "(Empty page)"
         
         edited_text = await edit_text_with_ai(content_text, edit_instruction)
         
