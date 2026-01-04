@@ -428,7 +428,7 @@ def get_agent(session_id: str = "default"):
             model=llm,
             tools=tools,
             checkpointer=_memory_store,
-            prompt=SYSTEM_PROMPT,  # Use 'prompt' instead of deprecated 'state_modifier'
+            state_modifier=SYSTEM_PROMPT,  # System instructions injected into every agent invocation
         )
         _agent_cache[session_id] = agent
     
