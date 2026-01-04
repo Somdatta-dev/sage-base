@@ -122,7 +122,11 @@ export const useAIStore = create<AIState>((set) => ({
   aiEnabled: true, // Will be updated when AI status is fetched
   setAIEnabled: (enabled) => set({ aiEnabled: enabled }),
   pageContext: null,
-  setPageContext: (context) => set({ pageContext: context }),
+  setPageContext: (context) => set({
+    pageContext: context,
+    // Clear messages when switching pages to remove old drafts
+    messages: []
+  }),
   pageReloadTrigger: 0,
   triggerPageReload: () => set((state) => ({ pageReloadTrigger: state.pageReloadTrigger + 1 })),
 }));
