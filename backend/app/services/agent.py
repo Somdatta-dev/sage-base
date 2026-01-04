@@ -412,26 +412,41 @@ _agent_cache: Dict[str, Any] = {}
 _memory_store = MemorySaver()
 
 
+def _prepare_agent_messages(state):
+    """
+    Prepare messages for the agent by injecting the system prompt.
+    This function is called before each LLM invocation.
+    """
+    from langchain_core.messages import SystemMessage
+
+    # Create the system message with our prompt
+    system_message = SystemMessage(content=SYSTEM_PROMPT)
+
+    # Return system message + conversation messages
+    return [system_message] + state["messages"]
+
+
 def get_agent(session_id: str = "default"):
     """Get or create a ReAct agent for the given session."""
     global _agent_cache
-    
+
     llm = get_llm()
     if not llm:
         return None
-    
+
     # Create agent if not cached
     if session_id not in _agent_cache:
         tools = [search_knowledge_base, web_search, summarize_page, edit_page_content, import_document_to_page, create_page, draft_content]
-        
+
+        # Create agent with prompt function
         agent = create_react_agent(
             model=llm,
             tools=tools,
+            prompt=_prepare_agent_messages,
             checkpointer=_memory_store,
-            state_modifier=SYSTEM_PROMPT,  # System instructions injected into every agent invocation
         )
         _agent_cache[session_id] = agent
-    
+
     return _agent_cache[session_id]
 
 
