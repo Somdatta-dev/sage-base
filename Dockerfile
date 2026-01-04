@@ -78,8 +78,8 @@ COPY start.sh .
 RUN chmod +x start.sh
 
 # Expose ports
-# 80 for Nginx (routes to backend:8787 and frontend:3000)
-EXPOSE 80
+# 8549 for Nginx (routes to backend:8787 and frontend:3000)
+EXPOSE 8549
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

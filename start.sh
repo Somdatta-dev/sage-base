@@ -55,14 +55,14 @@ NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 node server.js &
 FRONTEND_PID=$!
 
 # Start Nginx reverse proxy
-echo "🌐 Starting Nginx reverse proxy on port 80..."
+echo "🌐 Starting Nginx reverse proxy on port 8549..."
 nginx -g 'daemon off;' &
 NGINX_PID=$!
 
 echo "✅ All services started successfully!"
-echo "   - Nginx Proxy: http://localhost:80"
-echo "   - Backend API:  http://localhost:80/api/"
-echo "   - Frontend:     http://localhost:80/"
+echo "   - Nginx Proxy: http://localhost:8549"
+echo "   - Backend API:  http://localhost:8549/api/"
+echo "   - Frontend:     http://localhost:8549/"
 
 # Wait for all processes
 wait $NGINX_PID $BACKEND_PID $FRONTEND_PID
