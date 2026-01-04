@@ -203,10 +203,25 @@ async def chat(
     
     # Build message with context
     message = request.message
-    
+
     # Add page context if available
     if request.page_id:
-        message = f"[Current page ID: {request.page_id}]\n\n{message}"
+        # Fetch page details to provide better context
+        page_result = await db.execute(
+            select(Page).where(Page.id == request.page_id)
+        )
+        page = page_result.scalar_one_or_none()
+
+        if page:
+            message = f"""[Current page context]
+Page ID: {page.id}
+Page Title: "{page.title}"
+Space ID: {page.space_id}
+Status: {page.status}
+
+User is currently viewing this page and asked: {message}"""
+        else:
+            message = f"[Current page ID: {request.page_id}]\n\n{message}"
     
     # Add document context if available
     if request.document_id:

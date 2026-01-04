@@ -61,6 +61,12 @@ export function AISidebar() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Find the most recent draft_content across all messages
+  const latestDraft = messages
+    .slice()
+    .reverse()
+    .find(msg => msg.toolCalls?.some(tc => tc.name === "draft_content"));
+
   useEffect(() => {
     if (aiSidebarOpen && inputRef.current) {
       setTimeout(() => inputRef.current?.focus(), 300);
@@ -492,8 +498,8 @@ export function AISidebar() {
                             </div>
                           )}
 
-                          {/* Draft Content Card */}
-                          {message.toolCalls && message.toolCalls.find(t => t.name === "draft_content") && (() => {
+                          {/* Draft Content Card - Only show for the most recent draft */}
+                          {latestDraft && latestDraft.id === message.id && message.toolCalls && message.toolCalls.find(t => t.name === "draft_content") && (() => {
                             const draft = message.toolCalls!.find(t => t.name === "draft_content")!;
                             const content = draft.args?.content as string;
                             if (!content) return null;
