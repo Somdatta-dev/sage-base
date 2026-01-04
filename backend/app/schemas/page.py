@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
-from app.models.page import PageStatus
+from app.models.page import PageStatus, EditMode, UpdateRequestStatus
 
 
 class PageCreate(BaseModel):
@@ -31,6 +31,9 @@ class PageResponse(BaseModel):
     status: PageStatus
     position: int
     version: int
+    edit_mode: EditMode
+    last_published_at: Optional[datetime] = None
+    last_published_by: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 
@@ -55,8 +58,12 @@ class PageVersionResponse(BaseModel):
     id: int
     page_id: int
     content_json: Optional[dict] = None
+    title: Optional[str] = None
     version: int
     author_id: int
+    change_summary: Optional[str] = None
+    is_published: bool
+    published_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:
@@ -66,3 +73,47 @@ class PageVersionResponse(BaseModel):
 class PageMoveRequest(BaseModel):
     parent_id: Optional[int] = None
     position: int
+
+
+class PagePublishRequest(BaseModel):
+    change_summary: Optional[str] = None
+
+
+class PageSettingsUpdate(BaseModel):
+    edit_mode: EditMode
+
+
+class UpdateRequestCreate(BaseModel):
+    title: str
+    content_json: Optional[dict] = None
+    message: Optional[str] = None
+
+
+class UpdateRequestResponse(BaseModel):
+    id: int
+    page_id: int
+    requester_id: int
+    title: str
+    content_json: Optional[dict] = None
+    content_text: Optional[str] = None
+    message: Optional[str] = None
+    status: UpdateRequestStatus
+    reviewed_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
+    review_message: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UpdateRequestReview(BaseModel):
+    review_message: Optional[str] = None
+
+
+class DiffResponse(BaseModel):
+    from_version: int
+    to_version: int
+    text_diff: list
+    stats: dict

@@ -20,6 +20,11 @@ import type { Page, Space } from "@/types";
 import { formatDateTime } from "@/lib/utils";
 import { PageEditor } from "@/components/editor/PageEditor";
 import { VersionHistoryModal } from "@/components/pages/VersionHistoryModal";
+import { PublishButton } from "@/components/pages/PublishButton";
+import { PageSettingsModal } from "@/components/pages/PageSettingsModal";
+import { UpdateRequestModal } from "@/components/pages/UpdateRequestModal";
+import { UpdateRequestList } from "@/components/pages/UpdateRequestList";
+import { useAuthStore } from "@/lib/store";
 
 export default function PageViewPage() {
   const params = useParams();
@@ -37,8 +42,10 @@ export default function PageViewPage() {
   const [content, setContent] = useState<Record<string, unknown> | null>(null);
   const [title, setTitle] = useState("");
   const [aiEditFlash, setAiEditFlash] = useState(false);
+  const [showUpdateRequest, setShowUpdateRequest] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const prevReloadTriggerRef = useRef(0);
+  const { user } = useAuthStore();
 
   useEffect(() => {
     const load = async () => {
@@ -88,6 +95,13 @@ export default function PageViewPage() {
 
   const handleContentChange = useCallback(
     (newContent: Record<string, unknown>) => {
+      // If user can't edit, show update request modal
+      if (!canEdit) {
+        setContent(newContent);
+        setShowUpdateRequest(true);
+        return;
+      }
+
       setContent(newContent);
 
       if (saveTimeoutRef.current) {
@@ -97,29 +111,30 @@ export default function PageViewPage() {
         handleSave();
       }, 2000);
     },
-    [handleSave]
+    [handleSave, canEdit]
   );
 
-  const handlePublish = async () => {
-    if (!page) return;
+  const handleRefresh = async () => {
+    if (!page || !space) return;
 
-    setSaving(true);
     try {
-      const updated = await pagesApi.update(page.id, {
-        status: "published",
-      });
-      setPage(updated);
+      const pageData = await pagesApi.getBySlug(space.id, page.slug);
+      setPage(pageData);
+      setContent(pageData.content_json);
+      setTitle(pageData.title);
 
-      if (space) {
-        const tree = await pagesApi.getTree(space.id);
-        setPageTree(tree);
-      }
+      const tree = await pagesApi.getTree(space.id);
+      setPageTree(tree);
     } catch (error) {
-      console.error("Failed to publish:", error);
-    } finally {
-      setSaving(false);
+      console.error("Failed to refresh:", error);
     }
   };
+
+  const isPageOwner = user && page && page.author_id === user.id;
+  const isSpaceOwner = user && space && space.owner_id === user.id;
+  const canEdit =
+    user &&
+    (isPageOwner || isSpaceOwner || user.role === "admin" || page.edit_mode === "anyone");
 
   const handleDelete = async () => {
     if (!page || !space) return;
@@ -213,6 +228,16 @@ export default function PageViewPage() {
         </div>
 
         <div className="flex items-center gap-1.5">
+          {/* Pending update requests indicator (page owners only) */}
+          {isPageOwner && <UpdateRequestList />}
+
+          {/* Page edit mode badge */}
+          {page.edit_mode === "approval" && (
+            <span className="text-xs px-2 py-1 bg-orange-500/20 text-orange-400 rounded">
+              🔒 Approval Required
+            </span>
+          )}
+
           {saving ? (
             <span className="text-xs text-[#9b9b9b] flex items-center gap-1.5 px-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -246,19 +271,25 @@ export default function PageViewPage() {
             )}
           </button>
 
-          {page.status === "draft" && (
-            <button
-              onClick={handlePublish}
-              disabled={saving}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#2e7d32] hover:bg-[#388e3c] text-white rounded transition-colors disabled:opacity-50"
-            >
-              Publish
-            </button>
+          {/* Publish Button */}
+          <PublishButton
+            pageId={page.id}
+            status={page.status}
+            onPublish={handleRefresh}
+          />
+
+          {/* Page Settings (owner only) */}
+          {isPageOwner && (
+            <PageSettingsModal
+              pageId={page.id}
+              currentEditMode={page.edit_mode}
+              onUpdate={handleRefresh}
+            />
           )}
 
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !canEdit}
             className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#2383e2] hover:bg-[#1a6fc2] text-white rounded transition-colors disabled:opacity-50"
           >
             <Save className="w-3.5 h-3.5" />
@@ -377,6 +408,15 @@ export default function PageViewPage() {
         onClose={() => setShowVersions(false)}
         pageId={page.id}
         currentVersion={page.version}
+      />
+
+      <UpdateRequestModal
+        pageId={page.id}
+        currentTitle={title}
+        currentContent={content}
+        open={showUpdateRequest}
+        onClose={() => setShowUpdateRequest(false)}
+        onSuccess={handleRefresh}
       />
     </div>
   );

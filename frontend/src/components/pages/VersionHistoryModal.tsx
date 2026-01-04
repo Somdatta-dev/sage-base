@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Clock, Loader2, ChevronRight } from "lucide-react";
+import { X, Clock, Loader2, ChevronRight, GitCompare } from "lucide-react";
 import { pagesApi } from "@/lib/api";
 import type { PageVersion } from "@/types";
 import { formatDateTime } from "@/lib/utils";
+import { DiffViewer } from "./DiffViewer";
+import { Badge } from "@/components/ui/badge";
 
 interface VersionHistoryModalProps {
   open: boolean;
@@ -22,6 +24,8 @@ export function VersionHistoryModal({
   const [versions, setVersions] = useState<PageVersion[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState<PageVersion | null>(null);
+  const [showDiff, setShowDiff] = useState(false);
+  const [diffVersions, setDiffVersions] = useState<{ from: number; to: number } | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -100,21 +104,42 @@ export function VersionHistoryModal({
                     <button
                       key={version.id}
                       onClick={() => setSelectedVersion(version)}
-                      className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                      className={`w-full text-left px-4 py-3 rounded-lg transition-colors border-2 ${
+                        version.is_published
+                          ? "border-green-500/30"
+                          : "border-dashed border-gray-500/30"
+                      } ${
                         selectedVersion?.id === version.id
                           ? "bg-white/10"
                           : "hover:bg-white/5"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-1">
                         <p className="font-medium text-white">
                           Version {version.version}
                         </p>
-                        <ChevronRight className="w-4 h-4 text-gray-500" />
+                        {version.is_published && (
+                          <Badge className="bg-green-600 text-xs">Published</Badge>
+                        )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
+                      {version.title && (
+                        <p className="text-sm text-gray-300 mb-1 truncate">
+                          {version.title}
+                        </p>
+                      )}
+                      {version.change_summary && (
+                        <p className="text-xs text-gray-400 mb-1 line-clamp-2">
+                          {version.change_summary}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500">
                         {formatDateTime(version.created_at)}
                       </p>
+                      {version.published_at && (
+                        <p className="text-xs text-green-400">
+                          Published: {formatDateTime(version.published_at)}
+                        </p>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -127,12 +152,34 @@ export function VersionHistoryModal({
             {selectedVersion ? (
               <div>
                 <div className="mb-6">
-                  <h3 className="text-lg font-medium text-white mb-1">
-                    Version {selectedVersion.version}
-                  </h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-medium text-white">
+                      Version {selectedVersion.version}
+                    </h3>
+                    {selectedVersion.is_published && (
+                      <Badge className="bg-green-600">Published</Badge>
+                    )}
+                  </div>
+                  {selectedVersion.title && (
+                    <h4 className="text-md text-gray-300 mb-2">
+                      {selectedVersion.title}
+                    </h4>
+                  )}
+                  {selectedVersion.change_summary && (
+                    <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-blue-200">
+                        {selectedVersion.change_summary}
+                      </p>
+                    </div>
+                  )}
                   <p className="text-sm text-gray-400">
-                    Saved on {formatDateTime(selectedVersion.created_at)}
+                    Created: {formatDateTime(selectedVersion.created_at)}
                   </p>
+                  {selectedVersion.published_at && (
+                    <p className="text-sm text-green-400">
+                      Published: {formatDateTime(selectedVersion.published_at)}
+                    </p>
+                  )}
                 </div>
 
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6">
@@ -145,6 +192,21 @@ export function VersionHistoryModal({
                   <button className="px-4 py-2 bg-sage-600 hover:bg-sage-500 text-white text-sm rounded-lg transition-colors">
                     Restore This Version
                   </button>
+                  {selectedVersion.version > 1 && (
+                    <button
+                      onClick={() => {
+                        setDiffVersions({
+                          from: selectedVersion.version - 1,
+                          to: selectedVersion.version,
+                        });
+                        setShowDiff(true);
+                      }}
+                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <GitCompare className="w-4 h-4" />
+                      Compare with Previous
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (
@@ -155,6 +217,19 @@ export function VersionHistoryModal({
           </div>
         </div>
       </div>
+
+      {diffVersions && (
+        <DiffViewer
+          pageId={pageId}
+          fromVersion={diffVersions.from}
+          toVersion={diffVersions.to}
+          open={showDiff}
+          onClose={() => {
+            setShowDiff(false);
+            setDiffVersions(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -36,6 +36,8 @@ export interface SpaceCreate {
 }
 
 export type PageStatus = "draft" | "published" | "archived";
+export type EditMode = "anyone" | "approval";
+export type UpdateRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
 
 export interface Page {
   id: number;
@@ -48,6 +50,9 @@ export interface Page {
   status: PageStatus;
   position: number;
   version: number;
+  edit_mode: EditMode;
+  last_published_at: string | null;
+  last_published_by: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -82,9 +87,43 @@ export interface PageVersion {
   id: number;
   page_id: number;
   content_json: Record<string, unknown> | null;
+  title: string | null;
   version: number;
   author_id: number;
+  change_summary: string | null;
+  is_published: boolean;
+  published_at: string | null;
   created_at: string;
+}
+
+export interface UpdateRequest {
+  id: number;
+  page_id: number;
+  requester_id: number;
+  title: string;
+  content_json: Record<string, unknown> | null;
+  content_text: string | null;
+  message: string | null;
+  status: UpdateRequestStatus;
+  reviewed_by: number | null;
+  reviewed_at: string | null;
+  review_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiffStats {
+  additions: number;
+  deletions: number;
+  unchanged: number;
+  total_changes: number;
+}
+
+export interface VersionDiff {
+  from_version: number;
+  to_version: number;
+  text_diff: Array<[number, string]>;
+  stats: DiffStats;
 }
 
 export interface FileUploadResponse {

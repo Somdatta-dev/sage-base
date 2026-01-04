@@ -133,6 +133,41 @@ export const pagesApi = {
   delete: (id: number) => fetchWithAuth(`/api/pages/${id}`, { method: "DELETE" }),
   getVersions: (id: number) => fetchWithAuth(`/api/pages/${id}/versions`),
   getVersion: (id: number, version: number) => fetchWithAuth(`/api/pages/${id}/versions/${version}`),
+  // New version control endpoints
+  publish: (id: number, changeSummary?: string) =>
+    fetchWithAuth(`/api/pages/${id}/publish`, {
+      method: "POST",
+      body: JSON.stringify({ change_summary: changeSummary }),
+    }),
+  unpublish: (id: number) =>
+    fetchWithAuth(`/api/pages/${id}/unpublish`, { method: "POST" }),
+  updateSettings: (id: number, editMode: "anyone" | "approval") =>
+    fetchWithAuth(`/api/pages/${id}/settings`, {
+      method: "PATCH",
+      body: JSON.stringify({ edit_mode: editMode }),
+    }),
+  getDiff: (id: number, fromVersion: number, toVersion: number) =>
+    fetchWithAuth(`/api/pages/${id}/diff/${fromVersion}/${toVersion}`),
+  // Update requests
+  createUpdateRequest: (id: number, data: { title: string; content_json?: Record<string, unknown>; message?: string }) =>
+    fetchWithAuth(`/api/pages/${id}/update-requests`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  getUpdateRequests: (id: number) =>
+    fetchWithAuth(`/api/pages/${id}/update-requests`),
+  getPendingUpdateRequests: () =>
+    fetchWithAuth("/api/pages/update-requests/pending"),
+  approveUpdateRequest: (requestId: number, reviewMessage?: string) =>
+    fetchWithAuth(`/api/pages/update-requests/${requestId}/approve`, {
+      method: "PATCH",
+      body: JSON.stringify({ review_message: reviewMessage }),
+    }),
+  rejectUpdateRequest: (requestId: number, reviewMessage?: string) =>
+    fetchWithAuth(`/api/pages/update-requests/${requestId}/reject`, {
+      method: "PATCH",
+      body: JSON.stringify({ review_message: reviewMessage }),
+    }),
 };
 
 // Files API

@@ -79,13 +79,22 @@ async def index_page(page_id: int, title: str, content_text: str, space_id: int)
     )
 
 
+async def update_page_embedding(page_id: int, title: str, content_text: str, space_id: int):
+    """
+    Update existing page embedding in Qdrant.
+    This is an alias for index_page since upsert handles both create and update.
+    Called when a page is published to keep vector store in sync.
+    """
+    await index_page(page_id, title, content_text, space_id)
+
+
 async def delete_page_from_index(page_id: int):
     """Remove a page from Qdrant index."""
     if not settings.OPENAI_API_KEY:
         return
-    
+
     client = await get_async_qdrant_client()
-    
+
     try:
         await client.delete(
             collection_name=COLLECTION_NAME,

@@ -42,3 +42,4 @@ markdown>=3.7
 # Utilities
 python-slugify>=8.0.4
 aiofiles>=24.1.0
+diff-match-patch>=20230430
