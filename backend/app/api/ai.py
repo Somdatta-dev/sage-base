@@ -28,6 +28,7 @@ from app.services.agent import (
     store_uploaded_document,
     get_uploaded_document,
     clear_uploaded_document,
+    generate_created_page_content,
 )
 from app.services.document_processor import get_document_processor
 from slugify import slugify
@@ -281,6 +282,32 @@ User message: {message}"""
         except Exception as e:
             result["response"] = f"Failed to import document: {str(e)}"
     
+    # Handle CREATE_PAGE marker
+    elif "CREATE_PAGE:" in response_text:
+        try:
+            parts = response_text.split("CREATE_PAGE:", 1)[1]
+            space_id_str, title, topic, outline = parts.split(":", 3)
+            space_id = int(space_id_str.strip())
+            title = title.strip()
+            topic = topic.strip()
+            outline = outline.replace('::', ':').strip() if outline.strip() else None
+            
+            create_result = await _create_generated_page(
+                db, space_id, title, topic, outline, current_user.id
+            )
+            result["response"] = create_result["message"]
+            result["tool_calls"].append({
+                "name": "create_page",
+                "args": {"space_id": space_id, "title": title, "topic": topic, "content_outline": outline}
+            })
+            
+            if create_result.get("success"):
+                page_created = True
+                created_page_id = create_result.get("page_id")
+                created_page_slug = create_result.get("page_slug")
+        except Exception as e:
+            result["response"] = f"Failed to create page: {str(e)}"
+    
     return ChatResponse(
         response=result["response"],
         tool_calls=result["tool_calls"],
@@ -502,28 +529,24 @@ async def _perform_page_edit(
             page.content_text = page.content_text.replace(old_val, new_val)
     else:
         # For complex edits, use AI to edit the extracted text
-        content_text = _extract_text_from_json(page.content_json)
+        content_text = _extract_text_from_json(page.content_json) or page.content_text or ""
+        
+        if not content_text and not page.content_json:
+             return f"❌ Could not extract text from page '{page.title}'."
+             
+        # If we couldn't extract text from JSON but have content_text, use that
         if not content_text:
-            return f"❌ Could not extract text from page '{page.title}'."
+            content_text = " "
         
         edited_text = await edit_text_with_ai(content_text, edit_instruction)
         
-        # Update text nodes in the JSON recursively
-        def update_text_nodes(node, old_text, new_text):
-            if isinstance(node, dict):
-                if node.get("type") == "text" and node.get("text"):
-                    # For complex edits, we need smarter matching
-                    pass
-                if "content" in node:
-                    for child in node["content"]:
-                        update_text_nodes(child, old_text, new_text)
-            elif isinstance(node, list):
-                for item in node:
-                    update_text_nodes(item, old_text, new_text)
+        # Regenerate the Tiptap JSON structure from the edited text
+        # This ensures proper formatting (headings, lists, etc.) is preserved/created
+        processor = get_document_processor()
+        new_content_json = processor.convert_to_tiptap_json(edited_text)
         
-        # For complex edits, just update the plain text and return guidance
         page.content_text = edited_text
-        new_content_json = page.content_json
+
     
     # Update the page
     page.content_json = new_content_json
@@ -618,5 +641,74 @@ async def _import_document_to_page(
 **Status:** Draft
 
 📄 The document has been converted and saved as a new page. You can now view and edit it.""",
+    }
+
+
+async def _create_generated_page(
+    db: AsyncSession,
+    space_id: int,
+    title: str,
+    topic: str,
+    outline: Optional[str],
+    user_id: int,
+) -> dict:
+    """
+    Create a new AI-generated page.
+    """
+    # Verify space exists
+    space_result = await db.execute(select(Space).where(Space.id == space_id))
+    space = space_result.scalar_one_or_none()
+    
+    if not space:
+        return {
+            "success": False,
+            "message": f"❌ Space with ID {space_id} not found.",
+        }
+    
+    # Generate content using AI
+    markdown_content = await generate_created_page_content(title, topic, outline)
+    
+    # Generate slug
+    page_slug = slugify(title)
+    
+    # Check for slug conflicts
+    existing = await db.execute(
+        select(Page).where(Page.space_id == space_id, Page.slug == page_slug)
+    )
+    if existing.scalar_one_or_none():
+        import time
+        page_slug = f"{page_slug}-{int(time.time())}"
+    
+    # Convert markdown to Tiptap JSON
+    processor = get_document_processor()
+    content_json = processor.convert_to_tiptap_json(markdown_content)
+    
+    # Create the page
+    new_page = Page(
+        title=title,
+        slug=page_slug,
+        space_id=space_id,
+        owner_id=user_id,
+        content_json=content_json,
+        content_text=markdown_content, # Store markdown as text representation
+        status=PageStatus.DRAFT,
+        version=1,
+    )
+    
+    db.add(new_page)
+    await db.commit()
+    await db.refresh(new_page)
+    
+    return {
+        "success": True,
+        "page_id": new_page.id,
+        "page_slug": new_page.slug,
+        "message": f"""✅ **Page Created Successfully!**
+
+**Page:** {title}
+**Space:** {space.name}
+**Status:** Draft
+
+✨ The page content has been generated with beautiful formatting. You can now review and edit it.""",
     }
 

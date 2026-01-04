@@ -23,7 +23,8 @@ Your capabilities:
 2. **Web Search**: Search the web for real-time information
 3. **Page Summarization**: Summarize pages
 4. **Page Editing**: Edit page content (use when user asks to modify/change/update code in a page)
-5. **Document Import**: Convert uploaded documents (PDF, DOCX, etc.) into pages
+5. **Page Creation**: Create new beautifully formatted pages with proper structure
+6. **Document Import**: Convert uploaded documents (PDF, DOCX, etc.) into pages
 
 CRITICAL - Tool Usage Rules:
 
@@ -33,6 +34,12 @@ CRITICAL - Tool Usage Rules:
 - "How to" questions that don't require searching
 - Simple changes like "change X to Y" - just explain how
 - Questions about uploaded documents (their content is in the context)
+
+**Use create_page tool when:**
+- User asks to "create a page", "make a page", "write a page about..."
+- User wants to generate documentation, guides, or structured content
+- User says "create a new page in [space] about [topic]"
+- A space_id is provided in the context
 
 **Use import_document_to_page tool when:**
 - User uploads a document AND asks to "import", "create page", "convert to page"
@@ -52,10 +59,23 @@ CRITICAL - Tool Usage Rules:
 
 Decision Order:
 1. Can I answer from conversation context? → Answer directly
-2. Is this a document import request? → Use import_document_to_page
-3. Is this a page edit request with page_id? → Use edit_page_content
-4. Is this a document search request? → Use search_knowledge_base
-5. Need real-time info? → Use web_search
+2. Is this a page creation request? → Use create_page
+3. Is this a document import request? → Use import_document_to_page
+4. Is this a page edit request with page_id? → Use edit_page_content
+5. Is this a document search request? → Use search_knowledge_base
+6. Need real-time info? → Use web_search
+
+Page Formatting Guidelines:
+When creating or editing pages, use proper structure:
+- Start with a clear heading (H1 or H2)
+- Use subheadings (H2, H3) for sections
+- Use bullet lists for features, benefits, or items
+- Use numbered lists for steps or procedures
+- Use code blocks with language tags for code
+- Use blockquotes for important notes or quotes
+- Use tables for structured data
+- Use horizontal rules to separate major sections
+- Add task lists for action items
 
 Response Formatting:
 - Use markdown formatting
@@ -225,6 +245,36 @@ async def import_document_to_page(document_id: str, space_id: int, title: Option
     return f"IMPORT_DOC:{document_id}:{space_id}:{title or ''}"
 
 
+@tool
+async def create_page(space_id: int, title: str, topic: str, content_outline: Optional[str] = None) -> str:
+    """
+    Create a new beautifully formatted page in a space.
+    
+    Use this tool when:
+    - User asks to "create a page", "make a page", "write a page about..."
+    - User wants to generate documentation, guides, tutorials, or structured content
+    - User says "create a new page in [space] about [topic]"
+    
+    The page will be created with proper formatting including:
+    - Headings and subheadings
+    - Bullet and numbered lists
+    - Code blocks (if relevant)
+    - Tables (if appropriate)
+    - Blockquotes for important notes
+    
+    Args:
+        space_id: The space ID where the page should be created
+        title: The title for the new page
+        topic: Description of what the page should be about
+        content_outline: Optional outline or specific sections to include
+    
+    Returns:
+        Confirmation with page details or error message
+    """
+    # Return a marker that the API layer will handle
+    outline_part = content_outline.replace(':', '::') if content_outline else ''
+    return f"CREATE_PAGE:{space_id}:{title}:{topic}:{outline_part}"
+
 # Store for uploaded documents in memory (temporary storage for chat session)
 _uploaded_documents: Dict[str, Dict[str, Any]] = {}
 
@@ -259,7 +309,7 @@ def get_agent(session_id: str = "default"):
     
     # Create agent if not cached
     if session_id not in _agent_cache:
-        tools = [search_knowledge_base, web_search, summarize_page, edit_page_content, import_document_to_page]
+        tools = [search_knowledge_base, web_search, summarize_page, edit_page_content, import_document_to_page, create_page]
         
         agent = create_react_agent(
             model=llm,
@@ -536,4 +586,66 @@ Rules:
         return translated
     except Exception as e:
         return f"Translation error: {str(e)}"
+
+
+async def generate_created_page_content(title: str, topic: str, outline: Optional[str] = None) -> str:
+    """
+    Generate comprehensive page content using AI based on title and topic.
+    
+    Args:
+        title: Page title
+        topic: Page topic/description
+        outline: Optional content outline
+        
+    Returns:
+        Markdown formatted content
+    """
+    llm = get_llm()
+    if not llm:
+        return f"# {title}\n\nAI generation unavailable. Please configure API keys."
+    
+    outline_text = f"\n\nSuggested Outline:\n{outline}" if outline else ""
+    
+    try:
+        messages = [
+            SystemMessage(content="""You are an expert technical writer and documentarian.
+Your task is to create a comprehensive, well-structured, and beautiful document based on the user's request.
+
+Formatting Rules for Beautiful Pages:
+1. **Structure**:
+   - Start with a clear H1 title (but don't duplicate the page title if implied)
+   - Use H2 for main sections and H3 for subsections
+   - Include an introduction/overview section
+   
+2. **Visual elements**:
+   - Use bullet lists for features, benefits, or lists
+   - Use numbered lists for steps, procedures, or tutorials
+   - Use blockquotes (> quote) for callouts, important notes, or warnings
+   - Use code blocks (```language) for all code snippets, commands, or configuration
+   - Use tables for comparing data or structured information
+   - Use horizontal rules (---) to separate major sections
+
+3. **Content Style**:
+   - clear, professional, and engaging tone
+   - use **bold** for key concepts and _italics_ for emphasis
+   - keep paragraphs concise (3-4 lines max)
+   - ensure the content is detailed and substantive (not just a skeleton)
+
+4. **Specific Elements**:
+   - If writing a guide, include prerequisites and a conclusion
+   - If documenting code, include examples and explanations
+   - If creating a dashboard note, keep it scannable
+
+Return ONLY the markdown content."""),
+            HumanMessage(content=f"""Create a detailed page content for:
+Title: {title}
+Topic/Description: {topic}{outline_text}
+
+Generate the full content in Markdown format."""),
+        ]
+        
+        response = await llm.ainvoke(messages)
+        return response.content
+    except Exception as e:
+        return f"# {title}\n\nError generating content: {str(e)}\n\n## Topic\n{topic}"
 
