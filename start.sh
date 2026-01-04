@@ -6,8 +6,8 @@ echo "🚀 Starting SageBase Application..."
 # Function to handle shutdown gracefully
 cleanup() {
     echo "🛑 Shutting down services..."
-    kill $BACKEND_PID $FRONTEND_PID 2>/dev/null
-    wait $BACKEND_PID $FRONTEND_PID 2>/dev/null
+    kill $NGINX_PID $BACKEND_PID $FRONTEND_PID 2>/dev/null
+    wait $NGINX_PID $BACKEND_PID $FRONTEND_PID 2>/dev/null
     echo "✅ Shutdown complete"
     exit 0
 }
@@ -54,9 +54,15 @@ cd /app/frontend
 NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 node server.js &
 FRONTEND_PID=$!
 
-echo "✅ All services started successfully!"
-echo "   - Backend:  http://localhost:8787"
-echo "   - Frontend: http://localhost:3000"
+# Start Nginx reverse proxy
+echo "🌐 Starting Nginx reverse proxy on port 80..."
+nginx -g 'daemon off;' &
+NGINX_PID=$!
 
-# Wait for both processes
-wait $BACKEND_PID $FRONTEND_PID
+echo "✅ All services started successfully!"
+echo "   - Nginx Proxy: http://localhost:80"
+echo "   - Backend API:  http://localhost:80/api/"
+echo "   - Frontend:     http://localhost:80/"
+
+# Wait for all processes
+wait $NGINX_PID $BACKEND_PID $FRONTEND_PID

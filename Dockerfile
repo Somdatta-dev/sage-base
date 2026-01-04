@@ -54,6 +54,7 @@ RUN apt-get update && apt-get install -y \
     nodejs \
     npm \
     curl \
+    nginx \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python dependencies from builder
@@ -69,14 +70,16 @@ COPY --from=frontend-builder /app/frontend/public ./frontend/public
 COPY --from=frontend-builder /app/frontend/.next/standalone ./frontend/
 COPY --from=frontend-builder /app/frontend/.next/static ./frontend/.next/static
 
+# Copy Nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
 # Create startup script
 COPY start.sh .
 RUN chmod +x start.sh
 
 # Expose ports
-# 8787 for FastAPI backend
-# 3000 for Next.js frontend
-EXPOSE 8787 3000
+# 80 for Nginx (routes to backend:8787 and frontend:3000)
+EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
