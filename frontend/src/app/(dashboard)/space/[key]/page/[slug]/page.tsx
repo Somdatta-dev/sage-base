@@ -93,6 +93,12 @@ export default function PageViewPage() {
     }
   }, [page, title, content]);
 
+  const isPageOwner = user && page && page.author_id === user.id;
+  const isSpaceOwner = user && space && space.owner_id === user.id;
+  const canEdit =
+    user &&
+    (isPageOwner || isSpaceOwner || user.role === "admin" || page?.edit_mode === "anyone");
+
   const handleContentChange = useCallback(
     (newContent: Record<string, unknown>) => {
       // If user can't edit, show update request modal
@@ -130,11 +136,7 @@ export default function PageViewPage() {
     }
   };
 
-  const isPageOwner = user && page && page.author_id === user.id;
-  const isSpaceOwner = user && space && space.owner_id === user.id;
-  const canEdit =
-    user &&
-    (isPageOwner || isSpaceOwner || user.role === "admin" || page.edit_mode === "anyone");
+
 
   const handleDelete = async () => {
     if (!page || !space) return;
@@ -183,7 +185,7 @@ export default function PageViewPage() {
           setPage(pageData);
           setContent(pageData.content_json);
           setTitle(pageData.title);
-          
+
           // Trigger flash animation
           setAiEditFlash(true);
           setTimeout(() => setAiEditFlash(false), 1500);
@@ -212,11 +214,10 @@ export default function PageViewPage() {
       <div className="border-b border-[#2d2d2d] px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span
-            className={`px-2 py-0.5 text-xs rounded ${
-              page.status === "published"
+            className={`px-2 py-0.5 text-xs rounded ${page.status === "published"
                 ? "bg-[#2e7d32]/20 text-[#66bb6a]"
                 : "bg-[#f9a825]/20 text-[#ffca28]"
-            }`}
+              }`}
           >
             {page.status}
           </span>
@@ -252,11 +253,10 @@ export default function PageViewPage() {
 
           <button
             onClick={() => setIsEditing(!isEditing)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded transition-colors ${
-              isEditing
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded transition-colors ${isEditing
                 ? "bg-[#2383e2] text-white"
                 : "bg-[#2d2d2d] text-[#9b9b9b] hover:bg-[#373737]"
-            }`}
+              }`}
           >
             {isEditing ? (
               <>
@@ -397,7 +397,7 @@ export default function PageViewPage() {
           ) : (
             <>
               <h1 className="text-4xl font-bold text-[#e3e3e3] mb-6">{title}</h1>
-              <PageEditor content={content} onChange={() => {}} editable={false} />
+              <PageEditor content={content} onChange={() => { }} editable={false} />
             </>
           )}
         </div>
