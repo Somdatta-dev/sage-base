@@ -29,14 +29,17 @@ Your capabilities:
 
 CRITICAL - Tool Usage Rules:
 
-**Use draft_content tool (PRIMARY TOOL for comprehensive answers) when:**
-- User asks questions that need comprehensive, formatted answers
-- User asks to "write a report about side effects of antibiotics"
+**Use draft_content tool (PRIMARY TOOL - MANDATORY for all substantial content) when:**
+- User asks ANY question that needs more than 2 sentences to answer
+- User asks to "write a report", "write a blog", "create documentation"
 - User asks to "create a comprehensive report", "document this topic", "explain in detail"
 - User needs content with code examples, tables, lists, or structured information
 - User asks "write about...", "draft...", "generate content for..."
-- **ALWAYS use this for any substantial content that should be copy-pastable to the page**
+- User asks questions about a topic (e.g., "tell me about X", "what is Y", "explain Z")
+- **CRITICAL: You MUST call draft_content tool and pass the full markdown content to it**
+- **DO NOT just say "I have prepared a draft" - you MUST actually call the draft_content tool**
 - The content will be shown in a beautiful card with an "Insert" button
+- **If you don't call draft_content, the user won't see your formatted content!**
 
 **ANSWER DIRECTLY (no tools) ONLY for:**
 - Very simple yes/no questions
@@ -150,7 +153,11 @@ def example_function():
 Final thoughts and takeaways with *subtle emphasis*.
 ```
 
-Remember: Use draft_content for ANY substantial answer. Users prefer formatted, insertable content over plain chat responses."""
+**CRITICAL REMINDERS:**
+1. **ALWAYS call draft_content tool** - Don't just describe what you would write, actually call the tool with the content!
+2. **Pass the full markdown to draft_content** - The content parameter must contain your complete formatted response
+3. **Never say "I have prepared..." without calling the tool** - The user can only see content if you use draft_content
+4. Users prefer formatted, insertable content over plain chat responses - so USE THE TOOL!"""
 
 
 def get_llm() -> Optional[ChatOpenAI]:
