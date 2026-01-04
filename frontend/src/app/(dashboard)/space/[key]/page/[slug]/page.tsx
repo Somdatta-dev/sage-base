@@ -215,8 +215,8 @@ export default function PageViewPage() {
         <div className="flex items-center gap-3">
           <span
             className={`px-2 py-0.5 text-xs rounded ${page.status === "published"
-                ? "bg-[#2e7d32]/20 text-[#66bb6a]"
-                : "bg-[#f9a825]/20 text-[#ffca28]"
+              ? "bg-[#2e7d32]/20 text-[#66bb6a]"
+              : "bg-[#f9a825]/20 text-[#ffca28]"
               }`}
           >
             {page.status}
@@ -254,8 +254,8 @@ export default function PageViewPage() {
           <button
             onClick={() => setIsEditing(!isEditing)}
             className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded transition-colors ${isEditing
-                ? "bg-[#2383e2] text-white"
-                : "bg-[#2d2d2d] text-[#9b9b9b] hover:bg-[#373737]"
+              ? "bg-[#2383e2] text-white"
+              : "bg-[#2d2d2d] text-[#9b9b9b] hover:bg-[#373737]"
               }`}
           >
             {isEditing ? (
@@ -348,31 +348,33 @@ export default function PageViewPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="absolute inset-0 pointer-events-none z-20"
+              className="absolute inset-0 pointer-events-none z-20 overflow-hidden"
             >
-              {/* Gradient overlay */}
+              {/* Magic Scanning Beam */}
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 0.3, 0] }}
-                transition={{ duration: 1.5 }}
-                className="absolute inset-0 bg-gradient-to-b from-purple-500/20 via-transparent to-transparent"
+                initial={{ top: "-20%", opacity: 0 }}
+                animate={{ top: ["0%", "100%"], opacity: [0, 1, 1, 0] }}
+                transition={{ duration: 2, ease: "linear" }}
+                className="absolute left-0 right-0 h-32 bg-gradient-to-b from-transparent via-purple-500/20 to-transparent blur-md"
               />
-              {/* Sparkle border effect */}
+
+              {/* Thin bright line following the beam */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: [0, 1, 0], scale: [0.98, 1, 1] }}
-                transition={{ duration: 1.2 }}
-                className="absolute inset-4 border-2 border-purple-500/50 rounded-lg"
+                initial={{ top: "-20%", opacity: 0 }}
+                animate={{ top: ["0%", "100%"], opacity: [0, 1, 1, 0] }}
+                transition={{ duration: 2, ease: "linear" }}
+                className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-purple-400 to-transparent shadow-[0_0_15px_rgba(168,85,247,0.8)]"
               />
+
               {/* Success indicator */}
               <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: [0, 1, 1, 0], y: [-20, 0, 0, -10] }}
-                transition={{ duration: 1.5, times: [0, 0.2, 0.8, 1] }}
-                className="absolute top-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-full shadow-lg shadow-purple-500/25 flex items-center gap-2"
+                initial={{ opacity: 0, scale: 0.8, y: -20 }}
+                animate={{ opacity: [0, 1, 1, 0], scale: [0.8, 1, 1, 1], y: [-20, 0, 0, -10] }}
+                transition={{ duration: 2.5, times: [0, 0.1, 0.8, 1] }}
+                className="sticky top-10 mx-auto w-fit px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-full shadow-lg shadow-purple-500/30 flex items-center gap-2 border border-white/10 backdrop-blur-md"
               >
                 <Check className="w-4 h-4" />
-                Page updated by AI
+                <span>AI Writing...</span>
               </motion.div>
             </motion.div>
           )}
