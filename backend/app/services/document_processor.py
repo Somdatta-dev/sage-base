@@ -355,16 +355,83 @@ class DocumentProcessorService:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
     
+    def _parse_inline_formatting(self, text: str) -> list:
+        """
+        Parse inline markdown formatting (bold, italic, inline code) into TipTap content array.
+
+        Args:
+            text: Text with markdown inline formatting
+
+        Returns:
+            List of TipTap text nodes with marks
+        """
+        import re
+
+        # Simple regex patterns for inline formatting
+        # Handle **bold**, *italic*, and `code`
+        result = []
+        current_pos = 0
+
+        # Pattern to match inline formatting
+        # Order matters: code, then bold, then italic
+        pattern = r'(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)'
+
+        for match in re.finditer(pattern, text):
+            # Add text before the match (plain text)
+            if match.start() > current_pos:
+                plain = text[current_pos:match.start()]
+                if plain:
+                    result.append({'type': 'text', 'text': plain})
+
+            matched_text = match.group()
+
+            # Inline code
+            if matched_text.startswith('`') and matched_text.endswith('`'):
+                result.append({
+                    'type': 'text',
+                    'text': matched_text[1:-1],
+                    'marks': [{'type': 'code'}]
+                })
+            # Bold
+            elif matched_text.startswith('**') and matched_text.endswith('**'):
+                result.append({
+                    'type': 'text',
+                    'text': matched_text[2:-2],
+                    'marks': [{'type': 'bold'}]
+                })
+            # Italic
+            elif matched_text.startswith('*') and matched_text.endswith('*'):
+                result.append({
+                    'type': 'text',
+                    'text': matched_text[1:-1],
+                    'marks': [{'type': 'italic'}]
+                })
+
+            current_pos = match.end()
+
+        # Add remaining text
+        if current_pos < len(text):
+            remaining = text[current_pos:]
+            if remaining:
+                result.append({'type': 'text', 'text': remaining})
+
+        # If no formatting found, return simple text node
+        if not result:
+            return [{'type': 'text', 'text': text}] if text else []
+
+        return result
+
     def convert_to_tiptap_json(self, markdown_text: str) -> Dict[str, Any]:
         """
         Convert markdown content to Tiptap-compatible JSON.
-        
+
         This creates a structured document that preserves:
         - Headings
         - Paragraphs
         - Code blocks
         - Lists
         - Tables (as HTML)
+        - Inline formatting (bold, italic, code)
         """
         lines = markdown_text.split('\n')
         content = []
@@ -402,19 +469,19 @@ class DocumentProcessorService:
                 content.append({
                     'type': 'heading',
                     'attrs': {'level': 1},
-                    'content': [{'type': 'text', 'text': line[2:].strip()}]
+                    'content': self._parse_inline_formatting(line[2:].strip())
                 })
             elif line.startswith('## '):
                 content.append({
                     'type': 'heading',
                     'attrs': {'level': 2},
-                    'content': [{'type': 'text', 'text': line[3:].strip()}]
+                    'content': self._parse_inline_formatting(line[3:].strip())
                 })
             elif line.startswith('### '):
                 content.append({
                     'type': 'heading',
                     'attrs': {'level': 3},
-                    'content': [{'type': 'text', 'text': line[4:].strip()}]
+                    'content': self._parse_inline_formatting(line[4:].strip())
                 })
             # Handle bullet lists
             elif line.startswith('- ') or line.startswith('* '):
@@ -426,7 +493,7 @@ class DocumentProcessorService:
                         'type': 'listItem',
                         'content': [{
                             'type': 'paragraph',
-                            'content': [{'type': 'text', 'text': item_text}]
+                            'content': self._parse_inline_formatting(item_text)
                         }]
                     })
                     i += 1
@@ -444,7 +511,7 @@ class DocumentProcessorService:
                         'type': 'listItem',
                         'content': [{
                             'type': 'paragraph',
-                            'content': [{'type': 'text', 'text': item_text}]
+                            'content': self._parse_inline_formatting(item_text)
                         }]
                     })
                     i += 1
@@ -459,11 +526,12 @@ class DocumentProcessorService:
                 while i < len(lines) and lines[i].startswith('> '):
                     quote_lines.append(lines[i][2:])
                     i += 1
+                quote_text = '\n'.join(quote_lines)
                 content.append({
                     'type': 'blockquote',
                     'content': [{
                         'type': 'paragraph',
-                        'content': [{'type': 'text', 'text': '\n'.join(quote_lines)}]
+                        'content': self._parse_inline_formatting(quote_text)
                     }]
                 })
                 continue
@@ -489,7 +557,7 @@ class DocumentProcessorService:
             elif line.strip():
                 content.append({
                     'type': 'paragraph',
-                    'content': [{'type': 'text', 'text': line}]
+                    'content': self._parse_inline_formatting(line)
                 })
             
             i += 1

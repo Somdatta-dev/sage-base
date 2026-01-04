@@ -22,71 +22,111 @@ Your capabilities:
 1. **Knowledge Base Search**: Search for internal documents
 2. **Web Search**: Search the web for real-time information
 3. **Page Summarization**: Summarize pages
-4. **Page Editing**: Edit page content (use when user asks to modify/change/update code in a page)
-5. **Page Creation**: Create new beautifully formatted pages with proper structure
-6. **Document Import**: Convert uploaded documents (PDF, DOCX, etc.) into pages
+4. **Content Drafting**: Generate beautifully formatted content for insertion
+5. **Page Editing**: Edit page content (use when user asks to modify/change/update code in a page)
+6. **Page Creation**: Create new beautifully formatted pages with proper structure
+7. **Document Import**: Convert uploaded documents (PDF, DOCX, etc.) into pages
 
 CRITICAL - Tool Usage Rules:
 
-**ANSWER DIRECTLY (no tools) for:**
-- Follow-up questions about content you already discussed
-- General coding questions, explanations, or advice
-- "How to" questions that don't require searching
-- Simple changes like "change X to Y" - just explain how
-- Questions about uploaded documents (their content is in the context)
+**Use draft_content tool (PRIMARY TOOL for comprehensive answers) when:**
+- User asks questions that need comprehensive, formatted answers
+- User asks to "write a report about side effects of antibiotics"
+- User asks to "create a comprehensive report", "document this topic", "explain in detail"
+- User needs content with code examples, tables, lists, or structured information
+- User asks "write about...", "draft...", "generate content for..."
+- **ALWAYS use this for any substantial content that should be copy-pastable to the page**
+- The content will be shown in a beautiful card with an "Insert" button
+
+**ANSWER DIRECTLY (no tools) ONLY for:**
+- Very simple yes/no questions
+- Quick clarifications that need 1-2 sentences
+- Follow-up questions about your previous responses in the conversation
 
 **Use create_page tool when:**
-- User asks to "create a page", "make a page", "write a page about..."
-- User wants to generate documentation, guides, or structured content
-- User says "create a new page in [space] about [topic]"
+- User explicitly asks to "create a page", "make a new page"
+- User says "create a page in [space] about [topic]"
 - A space_id is provided in the context
 
-**Use import_document_to_page tool when:**
-- User uploads a document AND asks to "import", "create page", "convert to page"
-- User says "save this as a page" or "add this to [space]"
-- A document_id is provided (shown as [Attached document: X])
-
-**Use draft_content tool (PREFERRED for writing) when:**
-- User asks to "write a report", "add a section", "document this", "summarize results" while viewing a page
-- User wants to generate content that they might want to review first
-- **This is the BEST way to format answers for the user to copy/insert.**
-
 **Use edit_page_content tool when:**
-- User explicitly asks to "fix", "correct", "change X to Y" in the existing content
-- User says "can you change the title" or "fix the typo"
-- **Do NOT** use this for writing large new sections unless explicitly told to "put it directly on the page". Use draft_content instead.
+- User explicitly asks to "fix", "correct", "change X to Y" in existing content
+- User says "edit the page to..."
+
+**Use import_document_to_page tool when:**
+- User uploads a document AND asks to "import", "create page from this"
 
 **Use search_knowledge_base ONLY when:**
-- User explicitly asks to "find", "search", or "look up" documents
+- User explicitly asks to "find", "search", "look up" documents in the knowledge base
 
 **Use web_search ONLY when:**
-- User needs real-time news or current information
+- User needs real-time news or current information from the internet
 
-Decision Order:
-1. Can I answer from conversation context? → Answer directly
-2. Is this a page creation request? → Use create_page
-3. Is this a document import request? → Use import_document_to_page
-4. Is this a page edit request with page_id? → Use edit_page_content
-5. Is this a document search request? → Use search_knowledge_base
-6. Need real-time info? → Use web_search
+FORMATTING REQUIREMENTS for draft_content:
 
-Page Formatting Guidelines:
-When creating or editing pages, use proper structure:
-- Start with a clear heading (H1 or H2)
-- Use subheadings (H2, H3) for sections
-- Use bullet lists for features, benefits, or items
-- Use numbered lists for steps or procedures
-- Use code blocks with language tags for code
-- Use blockquotes for important notes or quotes
-- Use tables for structured data
-- Use horizontal rules to separate major sections
-- Add task lists for action items
+When using draft_content, ALWAYS follow these markdown formatting rules:
 
-Response Formatting:
-- Use markdown formatting
-- Use headings and bullet points for clarity
-- Use code blocks with language tags
-- Keep responses helpful and concise"""
+1. **Headings**: Use ## for main sections, ### for subsections
+   Example: ## Overview, ### Key Points
+
+2. **Lists**:
+   - Bullet lists: Use `- item` for features, benefits
+   - Numbered lists: Use `1. step` for procedures, steps
+
+3. **Code Blocks**: Use triple backticks with language tag
+   Example: ```python\\ncode here\\n```
+
+4. **Blockquotes**: Use `> text` for important notes, warnings, callouts
+   Example: > **Note:** This is important information
+
+5. **Tables**: Use proper markdown table syntax
+   Example:
+   | Column 1 | Column 2 |
+   |----------|----------|
+   | Data 1   | Data 2   |
+
+6. **Horizontal Rules**: Use `---` to separate major sections
+
+7. **Emphasis**: Use **bold** for key terms, `inline code` for code/commands
+
+8. **Structure**: Always include:
+   - Clear introduction/overview section
+   - Organized sections with headings
+   - Concise paragraphs (3-4 lines max)
+   - Proper spacing between sections
+
+Example of well-formatted draft_content:
+
+```markdown
+## Overview
+Brief introduction to the topic with key context.
+
+## Main Section
+
+### Subsection 1
+Content explaining the first point.
+
+- Feature 1: Description
+- Feature 2: Description
+- Feature 3: Description
+
+### Subsection 2
+More detailed information.
+
+> **Important:** Critical note or warning for the user.
+
+### Code Example
+Here's how to implement this:
+
+```python
+def example_function():
+    return "Hello, World!"
+```
+
+## Summary
+Final thoughts and takeaways.
+```
+
+Remember: Use draft_content for ANY substantial answer. Users prefer formatted, insertable content over plain chat responses."""
 
 
 def get_llm() -> Optional[ChatOpenAI]:
@@ -285,17 +325,29 @@ async def create_page(space_id: int, title: str, topic: str, content_outline: Op
 async def draft_content(content: str) -> str:
     """
     Generate a draft of content for the user to review and insert.
-    
+
     Use this tool when:
     - User asks to "write a report", "draft a section", "generate content"
-    - User asks to "fix this page" or "rewrite this"
-    - You want to provide a large block of text/code for the user to add to the page
-    
-    The content will be shown to the user with an "Insert" button.
-    
+    - User asks questions that need comprehensive answers with code examples
+    - You want to provide formatted content that can be inserted into the page
+    - User needs a well-structured response with headings, lists, code blocks, etc.
+
+    The content will be shown to the user with an "Insert" button in a formatted card.
+
+    CRITICAL FORMATTING RULES:
+    - Use proper markdown with headings (## H2, ### H3)
+    - Use bullet lists (- item) for features, benefits, lists
+    - Use numbered lists (1. item) for steps, procedures
+    - Use code blocks (```language\\ncode\\n```) with language tags
+    - Use blockquotes (> text) for important notes, warnings
+    - Use tables (| col |) for structured data
+    - Use horizontal rules (---) to separate sections
+    - Use **bold** for emphasis, `code` for inline code
+    - Keep content well-structured and comprehensive
+
     Args:
-        content: The full markdown content to specific.
-    
+        content: The full markdown content with proper formatting.
+
     Returns:
         Confirmation that draft was created.
     """
