@@ -229,7 +229,7 @@ async def update_page(
     is_admin = current_user.role == "admin"
 
     # If page requires approval and user is not owner/admin, reject direct edit
-    if page.edit_mode == EditMode.APPROVAL and not (is_page_owner or is_space_owner or is_admin):
+    if page.edit_mode == EditMode.APPROVAL.value and not (is_page_owner or is_space_owner or is_admin):
         raise HTTPException(
             status_code=403,
             detail="This page requires approval. Please submit an update request instead."

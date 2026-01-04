@@ -31,7 +31,7 @@ class PageResponse(BaseModel):
     status: PageStatus
     position: int
     version: int
-    edit_mode: EditMode
+    edit_mode: str
     last_published_at: Optional[datetime] = None
     last_published_by: Optional[int] = None
     created_at: datetime
@@ -80,7 +80,7 @@ class PagePublishRequest(BaseModel):
 
 
 class PageSettingsUpdate(BaseModel):
-    edit_mode: EditMode
+    edit_mode: str
 
 
 class UpdateRequestCreate(BaseModel):

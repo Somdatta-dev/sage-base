@@ -46,9 +46,9 @@ class Page(Base):
     )
     position: Mapped[int] = mapped_column(Integer, default=0)
     version: Mapped[int] = mapped_column(Integer, default=1)
-    edit_mode: Mapped[EditMode] = mapped_column(
-        SQLEnum(EditMode, values_callable=lambda x: [e.value for e in x]),
-        default=EditMode.ANYONE
+    edit_mode: Mapped[str] = mapped_column(
+        String(20),
+        default=EditMode.ANYONE.value
     )
     last_published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_published_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
