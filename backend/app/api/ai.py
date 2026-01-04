@@ -494,8 +494,9 @@ async def _perform_page_edit(
     if not page:
         return f"❌ Page with ID {page_id} not found."
     
+    # Initialize content if empty
     if not page.content_json:
-        return f"❌ Page '{page.title}' has no content to edit."
+        page.content_json = {"type": "doc", "content": [{"type": "paragraph", "content": []}]}
     
     # Convert JSON to string for editing
     content_json_str = json.dumps(page.content_json)

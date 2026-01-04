@@ -50,6 +50,7 @@ CRITICAL - Tool Usage Rules:
 - User explicitly asks to "edit", "update", "change", or "modify" the page/code
 - User says "can you change it to..." referring to the current page
 - A page_id is provided in the context (shown as [Current page ID: X])
+- **IMPORTANT**: If adding new content (like search results or a generated section), you MUST include the FULL text to be added in the instruction. Do NOT say "add the search results". Say "Append the following section: [Full Text Here]".
 
 **Use search_knowledge_base ONLY when:**
 - User explicitly asks to "find", "search", or "look up" documents
