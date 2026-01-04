@@ -357,7 +357,9 @@ class DocumentProcessorService:
     
     def _parse_inline_formatting(self, text: str) -> list:
         """
-        Parse inline markdown formatting (bold, italic, inline code) into TipTap content array.
+        Parse inline markdown formatting into TipTap content array.
+
+        Supports: [text](url) links, plain URLs, **bold**, *italic*, `code`, ~~strikethrough~~, ==highlight==
 
         Args:
             text: Text with markdown inline formatting
@@ -367,14 +369,13 @@ class DocumentProcessorService:
         """
         import re
 
-        # Simple regex patterns for inline formatting
-        # Handle **bold**, *italic*, and `code`
+        # Pattern to match all inline formatting
+        # Order matters: links, URLs, code, highlight, strikethrough, bold, italic
         result = []
         current_pos = 0
 
-        # Pattern to match inline formatting
-        # Order matters: code, then bold, then italic
-        pattern = r'(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)'
+        # Comprehensive pattern for all inline formatting
+        pattern = r'(\[([^\]]+)\]\(([^)]+)\))|(https?://[^\s<>)]+|www\.[^\s<>)]+)|(`[^`]+`)|(==[^=]+==)|(~~[^~]+~~)|(\*\*[^*]+\*\*)|(\*[^*]+\*)'
 
         for match in re.finditer(pattern, text):
             # Add text before the match (plain text)
@@ -385,12 +386,43 @@ class DocumentProcessorService:
 
             matched_text = match.group()
 
+            # Link: [text](url)
+            if matched_text.startswith('[') and '](' in matched_text:
+                link_text = match.group(2)
+                link_url = match.group(3)
+                result.append({
+                    'type': 'text',
+                    'text': link_text,
+                    'marks': [{'type': 'link', 'attrs': {'href': link_url, 'target': '_blank'}}]
+                })
+            # Auto-link plain URLs
+            elif matched_text.startswith('http') or matched_text.startswith('www'):
+                url = matched_text if matched_text.startswith('http') else f'https://{matched_text}'
+                result.append({
+                    'type': 'text',
+                    'text': matched_text,
+                    'marks': [{'type': 'link', 'attrs': {'href': url, 'target': '_blank'}}]
+                })
             # Inline code
-            if matched_text.startswith('`') and matched_text.endswith('`'):
+            elif matched_text.startswith('`') and matched_text.endswith('`'):
                 result.append({
                     'type': 'text',
                     'text': matched_text[1:-1],
                     'marks': [{'type': 'code'}]
+                })
+            # Highlight: ==text==
+            elif matched_text.startswith('==') and matched_text.endswith('=='):
+                result.append({
+                    'type': 'text',
+                    'text': matched_text[2:-2],
+                    'marks': [{'type': 'highlight'}]
+                })
+            # Strikethrough: ~~text~~
+            elif matched_text.startswith('~~') and matched_text.endswith('~~'):
+                result.append({
+                    'type': 'text',
+                    'text': matched_text[2:-2],
+                    'marks': [{'type': 'strike'}]
                 })
             # Bold
             elif matched_text.startswith('**') and matched_text.endswith('**'):
@@ -420,6 +452,166 @@ class DocumentProcessorService:
             return [{'type': 'text', 'text': text}] if text else []
 
         return result
+
+    def _parse_list_items(self, lines: list, start_index: int, list_type: str = 'bullet') -> tuple[list, int]:
+        """
+        Parse list items with support for nested lists.
+
+        Args:
+            lines: All lines of the document
+            start_index: Index where list starts
+            list_type: 'bullet' or 'ordered'
+
+        Returns:
+            Tuple of (list of list items, next line index after list)
+        """
+        list_items = []
+        i = start_index
+
+        def get_indent_level(line: str) -> int:
+            """Get the indentation level (number of spaces/tabs at start)"""
+            return len(line) - len(line.lstrip())
+
+        def is_list_item(line: str, ltype: str) -> bool:
+            """Check if line is a list item of the given type"""
+            stripped = line.lstrip()
+            if ltype == 'bullet':
+                return stripped.startswith('- ') or stripped.startswith('* ')
+            else:  # ordered
+                return stripped and stripped[0].isdigit() and '. ' in stripped[:4]
+
+        base_indent = get_indent_level(lines[i]) if i < len(lines) else 0
+
+        while i < len(lines):
+            line = lines[i]
+            if not line.strip():
+                i += 1
+                continue
+
+            indent = get_indent_level(line)
+
+            # If line is not indented properly for this list level, we're done
+            if indent < base_indent:
+                break
+
+            # Check if it's a list item at current level
+            if indent == base_indent and is_list_item(line, list_type):
+                # Extract item text
+                stripped = line.lstrip()
+                if list_type == 'bullet':
+                    item_text = stripped[2:].strip()
+                else:
+                    item_text = stripped.split('. ', 1)[1].strip() if '. ' in stripped else stripped
+
+                item_content = [{
+                    'type': 'paragraph',
+                    'content': self._parse_inline_formatting(item_text)
+                }]
+
+                # Check for nested list on next line
+                if i + 1 < len(lines):
+                    next_line = lines[i + 1]
+                    next_indent = get_indent_level(next_line)
+
+                    if next_indent > indent and next_line.strip():
+                        # Nested list detected
+                        nested_type = 'bullet' if (next_line.lstrip().startswith('- ') or next_line.lstrip().startswith('* ')) else 'ordered'
+                        nested_items, next_i = self._parse_list_items(lines, i + 1, nested_type)
+
+                        if nested_items:
+                            item_content.append({
+                                'type': 'bulletList' if nested_type == 'bullet' else 'orderedList',
+                                'content': nested_items
+                            })
+                            i = next_i
+                            list_items.append({
+                                'type': 'listItem',
+                                'content': item_content
+                            })
+                            continue
+
+                list_items.append({
+                    'type': 'listItem',
+                    'content': item_content
+                })
+                i += 1
+            elif indent > base_indent:
+                # Skip this line, it will be handled by nested list parsing
+                i += 1
+            else:
+                # Not a list item at this level, we're done
+                break
+
+        return list_items, i
+
+    def _parse_table(self, lines: list, start_index: int) -> tuple[Dict[str, Any], int]:
+        """
+        Parse a markdown table into TipTap table JSON structure.
+
+        Args:
+            lines: All lines of the document
+            start_index: Index where table starts
+
+        Returns:
+            Tuple of (table JSON structure, next line index after table)
+        """
+        table_lines = []
+        i = start_index
+
+        # Collect all table lines
+        while i < len(lines) and lines[i].startswith('|'):
+            table_lines.append(lines[i])
+            i += 1
+
+        if not table_lines:
+            return None, start_index
+
+        # Parse table structure
+        rows = []
+        is_first_row = True
+        has_header = False
+
+        for line_idx, line in enumerate(table_lines):
+            # Check if this is the separator row (|---|---|)
+            if '---' in line or ':-:' in line or ':--' in line or '--:' in line:
+                has_header = True
+                continue
+
+            # Parse cells from the row
+            cells = [c.strip() for c in line.split('|')]
+            # Remove empty first/last cells from | cell | cell | format
+            cells = [c for c in cells if c]
+
+            if not cells:
+                continue
+
+            # Create table cells with inline formatting
+            cell_nodes = []
+            for cell_text in cells:
+                cell_content = self._parse_inline_formatting(cell_text)
+                cell_nodes.append({
+                    'type': 'tableCell' if not (is_first_row and has_header) or line_idx > 0 else 'tableHeader',
+                    'content': [{
+                        'type': 'paragraph',
+                        'content': cell_content if cell_content else [{'type': 'text', 'text': ''}]
+                    }]
+                })
+
+            rows.append({
+                'type': 'tableRow',
+                'content': cell_nodes
+            })
+
+            if is_first_row and has_header:
+                is_first_row = False
+
+        if not rows:
+            return None, start_index
+
+        return {
+            'type': 'table',
+            'content': rows
+        }, i
 
     def convert_to_tiptap_json(self, markdown_text: str) -> Dict[str, Any]:
         """
@@ -483,43 +675,32 @@ class DocumentProcessorService:
                     'attrs': {'level': 3},
                     'content': self._parse_inline_formatting(line[4:].strip())
                 })
-            # Handle bullet lists
+            # Handle bullet lists (with nested list support)
             elif line.startswith('- ') or line.startswith('* '):
-                # Collect list items
-                list_items = []
-                while i < len(lines) and (lines[i].startswith('- ') or lines[i].startswith('* ')):
-                    item_text = lines[i][2:].strip()
-                    list_items.append({
-                        'type': 'listItem',
-                        'content': [{
-                            'type': 'paragraph',
-                            'content': self._parse_inline_formatting(item_text)
-                        }]
+                list_items, next_i = self._parse_list_items(lines, i, 'bullet')
+                if list_items:
+                    content.append({
+                        'type': 'bulletList',
+                        'content': list_items
                     })
+                    i = next_i
+                    continue
+                else:
                     i += 1
-                content.append({
-                    'type': 'bulletList',
-                    'content': list_items
-                })
-                continue
-            # Handle numbered lists
+                    continue
+            # Handle numbered lists (with nested list support)
             elif line and line[0].isdigit() and '. ' in line[:4]:
-                list_items = []
-                while i < len(lines) and lines[i] and lines[i][0].isdigit() and '. ' in lines[i][:4]:
-                    item_text = lines[i].split('. ', 1)[1].strip() if '. ' in lines[i] else lines[i]
-                    list_items.append({
-                        'type': 'listItem',
-                        'content': [{
-                            'type': 'paragraph',
-                            'content': self._parse_inline_formatting(item_text)
-                        }]
+                list_items, next_i = self._parse_list_items(lines, i, 'ordered')
+                if list_items:
+                    content.append({
+                        'type': 'orderedList',
+                        'content': list_items
                     })
+                    i = next_i
+                    continue
+                else:
                     i += 1
-                content.append({
-                    'type': 'orderedList',
-                    'content': list_items
-                })
-                continue
+                    continue
             # Handle blockquotes
             elif line.startswith('> '):
                 quote_lines = []
@@ -540,19 +721,16 @@ class DocumentProcessorService:
                 content.append({'type': 'horizontalRule'})
             # Handle table rows (markdown tables)
             elif line.startswith('|'):
-                # Skip table for now - just extract text
-                table_text = []
-                while i < len(lines) and lines[i].startswith('|'):
-                    if '---' not in lines[i]:  # Skip separator row
-                        cells = [c.strip() for c in lines[i].split('|') if c.strip()]
-                        table_text.append(' | '.join(cells))
+                # Parse table using helper function
+                table_node, next_i = self._parse_table(lines, i)
+                if table_node:
+                    content.append(table_node)
+                    i = next_i
+                    continue
+                else:
+                    # Fallback: treat as plain text if parsing fails
                     i += 1
-                if table_text:
-                    content.append({
-                        'type': 'paragraph',
-                        'content': [{'type': 'text', 'text': '\n'.join(table_text)}]
-                    })
-                continue
+                    continue
             # Handle regular paragraphs
             elif line.strip():
                 content.append({

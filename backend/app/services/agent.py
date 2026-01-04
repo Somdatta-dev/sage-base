@@ -71,6 +71,11 @@ When using draft_content, ALWAYS follow these markdown formatting rules:
 2. **Lists**:
    - Bullet lists: Use `- item` for features, benefits
    - Numbered lists: Use `1. step` for procedures, steps
+   - Nested lists: Use 2-space indentation for sub-items
+     Example:
+     - Main point
+       - Sub-point 1
+       - Sub-point 2
 
 3. **Code Blocks**: Use triple backticks with language tag
    Example: ```python\\ncode here\\n```
@@ -78,7 +83,7 @@ When using draft_content, ALWAYS follow these markdown formatting rules:
 4. **Blockquotes**: Use `> text` for important notes, warnings, callouts
    Example: > **Note:** This is important information
 
-5. **Tables**: Use proper markdown table syntax
+5. **Tables**: Use proper markdown table syntax (will render as interactive tables)
    Example:
    | Column 1 | Column 2 |
    |----------|----------|
@@ -86,31 +91,47 @@ When using draft_content, ALWAYS follow these markdown formatting rules:
 
 6. **Horizontal Rules**: Use `---` to separate major sections
 
-7. **Emphasis**: Use **bold** for key terms, `inline code` for code/commands
+7. **Inline Formatting** (can be combined):
+   - **Bold**: Use **text** for emphasis and key terms
+   - *Italic*: Use *text* for subtle emphasis
+   - `Inline code`: Use `code` for commands, variables, file names
+   - [Links](url): Use [text](url) for clickable links
+   - Plain URLs: http://example.com automatically becomes clickable
+   - ~~Strikethrough~~: Use ~~text~~ for deprecated/outdated info
+   - ==Highlight==: Use ==text== to call attention to important text
 
 8. **Structure**: Always include:
    - Clear introduction/overview section
    - Organized sections with headings
    - Concise paragraphs (3-4 lines max)
    - Proper spacing between sections
+   - Use tables for comparisons or structured data
+   - Use nested lists for hierarchical information
 
 Example of well-formatted draft_content:
 
 ```markdown
 ## Overview
-Brief introduction to the topic with key context.
+Brief introduction to the topic with key context. Check out https://example.com for more info.
 
 ## Main Section
 
 ### Subsection 1
-Content explaining the first point.
+Content explaining the first point with **bold emphasis** and `inline code`.
 
 - Feature 1: Description
+  - Sub-feature A: Details
+  - Sub-feature B: More details
 - Feature 2: Description
-- Feature 3: Description
+- ==Important Feature==: This one is highlighted
 
 ### Subsection 2
-More detailed information.
+More detailed information with a comparison table.
+
+| Feature | Before | After |
+|---------|--------|-------|
+| Speed | Slow | Fast |
+| Cost | High | Low |
 
 > **Important:** Critical note or warning for the user.
 
@@ -122,8 +143,11 @@ def example_function():
     return "Hello, World!"
 ```
 
+## Deprecated Features
+~~Old API~~ has been replaced with the new API. See [documentation](https://docs.example.com) for migration guide.
+
 ## Summary
-Final thoughts and takeaways.
+Final thoughts and takeaways with *subtle emphasis*.
 ```
 
 Remember: Use draft_content for ANY substantial answer. Users prefer formatted, insertable content over plain chat responses."""
@@ -336,13 +360,17 @@ async def draft_content(content: str) -> str:
 
     CRITICAL FORMATTING RULES:
     - Use proper markdown with headings (## H2, ### H3)
-    - Use bullet lists (- item) for features, benefits, lists
+    - Use bullet lists (- item) and nested lists (2-space indent: - item\\n  - subitem)
     - Use numbered lists (1. item) for steps, procedures
     - Use code blocks (```language\\ncode\\n```) with language tags
     - Use blockquotes (> text) for important notes, warnings
-    - Use tables (| col |) for structured data
+    - Use tables (| col |) for structured data - they render as interactive tables!
     - Use horizontal rules (---) to separate sections
-    - Use **bold** for emphasis, `code` for inline code
+    - Use **bold** for emphasis, *italic* for subtle emphasis
+    - Use `code` for inline code, variables, commands
+    - Use [text](url) for links, or plain URLs (auto-linked)
+    - Use ~~strikethrough~~ for deprecated/outdated information
+    - Use ==highlight== to call attention to important text
     - Keep content well-structured and comprehensive
 
     Args:
