@@ -46,7 +46,6 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${API_DOMAIN:-http://localhost:8787}
-        BUILD_ID: ${BUILD_ID:-production}
     container_name: sagebase-app
     restart: unless-stopped
     ports:
