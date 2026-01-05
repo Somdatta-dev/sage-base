@@ -26,31 +26,46 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers,
-  });
+  // Add timeout handling (10 second timeout for all requests)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-  if (response.status === 401) {
-    // Token expired or invalid - clear auth
-    if (typeof window !== "undefined") {
-      const { useAuthStore } = require("./store");
-      useAuthStore.getState().clearAuth();
-      window.location.href = "/login";
+  try {
+    const response = await fetch(`${API_BASE}${url}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.status === 401) {
+      // Token expired or invalid - clear auth
+      if (typeof window !== "undefined") {
+        const { useAuthStore } = require("./store");
+        useAuthStore.getState().clearAuth();
+        window.location.href = "/login";
+      }
+      throw new Error("Unauthorized");
     }
-    throw new Error("Unauthorized");
-  }
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Request failed" }));
-    throw new Error(extractErrorMessage(error));
-  }
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: "Request failed" }));
+      throw new Error(extractErrorMessage(error));
+    }
 
-  if (response.status === 204) {
-    return null;
-  }
+    if (response.status === 204) {
+      return null;
+    }
 
-  return response.json();
+    return response.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timeout - server is taking too long to respond. Please try again.');
+    }
+    throw error;
+  }
 }
 
 // Helper to extract error message from FastAPI responses

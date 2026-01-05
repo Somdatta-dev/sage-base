@@ -46,10 +46,18 @@ def extract_text_from_content(content_json: dict) -> str:
 
 
 def build_page_tree(pages: List[Page], parent_id: Optional[int] = None) -> List[PageTreeItem]:
-    """Build hierarchical page tree from flat list."""
-    tree = []
+    """Build hierarchical page tree from flat list using optimized O(n) algorithm."""
+    # Build lookup dictionary: parent_id -> list of children (O(n))
+    pages_by_parent = {}
     for page in pages:
-        if page.parent_id == parent_id:
+        if page.parent_id not in pages_by_parent:
+            pages_by_parent[page.parent_id] = []
+        pages_by_parent[page.parent_id].append(page)
+
+    # Recursive function to build tree using dict lookup (O(n) total)
+    def build_children(pid: Optional[int]) -> List[PageTreeItem]:
+        children = []
+        for page in pages_by_parent.get(pid, []):
             item = PageTreeItem(
                 id=page.id,
                 title=page.title,
@@ -57,10 +65,12 @@ def build_page_tree(pages: List[Page], parent_id: Optional[int] = None) -> List[
                 parent_id=page.parent_id,
                 position=page.position,
                 status=page.status,
-                children=build_page_tree(pages, page.id)
+                children=build_children(page.id)  # Now O(1) lookup instead of O(n)
             )
-            tree.append(item)
-    return sorted(tree, key=lambda x: x.position)
+            children.append(item)
+        return sorted(children, key=lambda x: x.position)
+
+    return build_children(parent_id)
 
 
 @router.get("/space/{space_id}", response_model=List[PageResponse])
@@ -395,19 +405,32 @@ async def publish_page(
     await db.commit()
     await db.refresh(page)
 
-    # Update vector store (async, don't block on errors)
-    try:
-        await update_page_embedding(
+    # Update vector store in background (fire and forget - don't block response)
+    import asyncio
+    asyncio.create_task(
+        _update_embedding_background(
             page_id=page.id,
             title=page.title,
             content_text=page.content_text or "",
             space_id=page.space_id
         )
-    except Exception as e:
-        # Log but don't fail the publish
-        print(f"Warning: Failed to update vector store: {e}")
+    )
 
     return PageResponse.model_validate(page)
+
+
+async def _update_embedding_background(page_id: int, title: str, content_text: str, space_id: int):
+    """Background task to update page embedding without blocking the response."""
+    try:
+        await update_page_embedding(
+            page_id=page_id,
+            title=title,
+            content_text=content_text,
+            space_id=space_id
+        )
+    except Exception as e:
+        # Log but don't fail
+        print(f"Warning: Failed to update vector store for page {page_id}: {e}")
 
 
 @router.post("/{page_id}/unpublish", response_model=PageResponse)

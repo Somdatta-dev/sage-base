@@ -53,16 +53,20 @@ export default function PageViewPage() {
         const spaceKey = params.key as string;
         const slug = params.slug as string;
 
+        // First get space data
         const spaceData = await spacesApi.getByKey(spaceKey);
         setSpace(spaceData);
         setCurrentSpace(spaceData);
 
-        const pageData = await pagesApi.getBySlug(spaceData.id, slug);
+        // Then parallelize page and tree fetching (both need space.id)
+        const [pageData, tree] = await Promise.all([
+          pagesApi.getBySlug(spaceData.id, slug),
+          pagesApi.getTree(spaceData.id),
+        ]);
+
         setPage(pageData);
         setContent(pageData.content_json);
         setTitle(pageData.title);
-
-        const tree = await pagesApi.getTree(spaceData.id);
         setPageTree(tree);
       } catch {
         router.push("/dashboard");
