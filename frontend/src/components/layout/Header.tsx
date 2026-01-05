@@ -87,10 +87,6 @@ export function Header() {
           <span className="hidden sm:inline">Search</span>
           <kbd className="hidden sm:inline text-xs text-[#6b6b6b] ml-1">⌘K</kbd>
         </button>
-
-        <button className="p-1.5 rounded hover:bg-[#2d2d2d] transition-colors text-[#9b9b9b] hover:text-[#e3e3e3]">
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
       </div>
     </header>
   );

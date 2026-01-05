@@ -422,24 +422,6 @@ export function AISidebar() {
                           >
                             📄 Summarize this page
                           </motion.button>
-                          <motion.button
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.5 }}
-                            onClick={() => setInput(`Explain the code in "${pageContext.pageTitle}"`)}
-                            className="w-full text-left px-3 py-2 rounded-lg bg-[#2d2d2d] hover:bg-[#373737] text-sm text-[#9b9b9b] hover:text-[#e3e3e3] transition-colors"
-                          >
-                            💡 Explain the code
-                          </motion.button>
-                          <motion.button
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.6 }}
-                            onClick={() => setInput("Find related pages in the knowledge base")}
-                            className="w-full text-left px-3 py-2 rounded-lg bg-[#2d2d2d] hover:bg-[#373737] text-sm text-[#9b9b9b] hover:text-[#e3e3e3] transition-colors"
-                          >
-                            🔍 Find related pages
-                          </motion.button>
                         </>
                       ) : (
                         // Default suggestions when not on a page
@@ -662,9 +644,9 @@ export function AISidebar() {
                           : "Configure OPENAI_API_KEY"
                     }
                     disabled={!aiEnabled || loading}
-                    className="flex-1 resize-none px-3 py-2 bg-[#2d2d2d] border border-[#373737] rounded-lg text-sm text-[#e3e3e3] placeholder-[#6b6b6b] focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    rows={1}
-                    style={{ minHeight: "40px", maxHeight: "100px" }}
+                    className="flex-1 resize-none px-3 py-3 bg-[#2d2d2d] border border-[#373737] rounded-lg text-sm text-[#e3e3e3] placeholder-[#6b6b6b] focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    rows={2}
+                    style={{ minHeight: "60px", maxHeight: "120px" }}
                   />
                   <motion.button
                     whileHover={{ scale: 1.05 }}
