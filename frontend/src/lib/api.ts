@@ -4,6 +4,10 @@ import type { AuthResponse, User } from "@/types";
 // For production, set API_DOMAIN env var in your deployment
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
 
+type AuthRequestInit = RequestInit & {
+  timeoutMs?: number;
+};
+
 // Dynamic import to avoid SSR issues with Zustand persist
 function getToken(): string | null {
   if (typeof window === "undefined") {
@@ -14,12 +18,16 @@ function getToken(): string | null {
   return useAuthStore.getState().token;
 }
 
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
+async function fetchWithAuth(url: string, options: AuthRequestInit = {}) {
   const token = getToken();
+  const {
+    timeoutMs = 10000,
+    ...requestOptions
+  } = options;
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
-    ...options.headers,
+    ...requestOptions.headers,
   };
 
   if (token) {
@@ -28,11 +36,11 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 
   // Add timeout handling (10 second timeout for all requests)
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(`${API_BASE}${url}`, {
-      ...options,
+      ...requestOptions,
       headers,
       signal: controller.signal,
     });
@@ -61,8 +69,8 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
     return response.json();
   } catch (error) {
     clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timeout - server is taking too long to respond. Please try again.');
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Request timeout - server is taking too long to respond. Please try again.");
     }
     throw error;
   }
@@ -290,6 +298,7 @@ export const aiApi = {
         page_id: pageId,
         document_id: documentId,
       }),
+      timeoutMs: 60000, // AI can take longer (web search + drafting)
     }),
 
   uploadDocument: async (file: File): Promise<DocumentUploadResponse> => {
@@ -317,12 +326,14 @@ export const aiApi = {
     fetchWithAuth("/api/ai/summarize", {
       method: "POST",
       body: JSON.stringify({ page_id: pageId }),
+      timeoutMs: 60000,
     }),
 
   editText: (text: string, instruction: string): Promise<AIEditTextResponse> =>
     fetchWithAuth("/api/ai/edit-text", {
       method: "POST",
       body: JSON.stringify({ text, instruction }),
+      timeoutMs: 60000,
     }),
 
   clearSession: (sessionId: string = "default") =>
@@ -341,5 +352,6 @@ export const aiApi = {
         target_language: targetLanguage,
         source_language: sourceLanguage,
       }),
+      timeoutMs: 60000,
     }),
 };
