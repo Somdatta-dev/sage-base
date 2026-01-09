@@ -51,6 +51,8 @@ export function AISidebar() {
     setAISidebarOpen,
     pageContext,
     triggerPageReload,
+    currentDraftMessageId,
+    setCurrentDraftMessageId,
   } = useAIStore();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,12 +62,6 @@ export function AISidebar() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Find the most recent draft_content across all messages
-  const latestDraft = messages
-    .slice()
-    .reverse()
-    .find(msg => msg.toolCalls?.some(tc => tc.name === "draft_content"));
 
   useEffect(() => {
     if (aiSidebarOpen && inputRef.current) {
@@ -131,6 +127,7 @@ export function AISidebar() {
     const currentDocId = attachedDoc?.documentId;
     setInput("");
     setAttachedDoc(null); // Clear attachment after sending
+    setCurrentDraftMessageId(null); // Clear any stale draft preview
     setLoading(true);
 
     try {
@@ -150,6 +147,13 @@ export function AISidebar() {
       };
 
       addMessage(assistantMessage);
+
+      const draftCall = response.tool_calls?.find((tc) => tc.name === "draft_content" && typeof tc.args?.content === "string");
+      if (draftCall) {
+        setCurrentDraftMessageId(assistantMessage.id);
+      } else if (!response.page_edited) {
+        setCurrentDraftMessageId(null);
+      }
 
       // If AI edited a page, trigger reload
       if (response.page_edited) {
@@ -180,6 +184,7 @@ export function AISidebar() {
     try {
       await pagesApi.appendContent(pageContext.pageId, content);
       triggerPageReload();
+      setCurrentDraftMessageId(null);
 
       addMessage({
         id: Date.now().toString(),
@@ -246,6 +251,7 @@ export function AISidebar() {
 
   const handleClearChat = async () => {
     clearMessages();
+    setCurrentDraftMessageId(null);
     try {
       await aiApi.clearSession();
     } catch {
@@ -480,8 +486,8 @@ export function AISidebar() {
                             </div>
                           )}
 
-                          {/* Draft Content Card - Only show for the most recent draft */}
-                          {latestDraft && latestDraft.id === message.id && message.toolCalls && message.toolCalls.find(t => t.name === "draft_content") && (() => {
+                          {/* Draft Content Card - Only show when this message is the active draft */}
+                          {currentDraftMessageId === message.id && message.toolCalls && message.toolCalls.find(t => t.name === "draft_content") && (() => {
                             const draft = message.toolCalls!.find(t => t.name === "draft_content")!;
                             const content = draft.args?.content as string;
                             if (!content) return null;

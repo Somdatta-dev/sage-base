@@ -102,6 +102,8 @@ interface AIState {
   messages: AIMessage[];
   addMessage: (message: AIMessage) => void;
   clearMessages: () => void;
+  currentDraftMessageId: string | null;
+  setCurrentDraftMessageId: (id: string | null) => void;
   // Configuration
   aiEnabled: boolean;
   setAIEnabled: (enabled: boolean) => void;
@@ -119,13 +121,16 @@ export const useAIStore = create<AIState>((set) => ({
   messages: [],
   addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
   clearMessages: () => set({ messages: [] }),
+  currentDraftMessageId: null,
+  setCurrentDraftMessageId: (id) => set({ currentDraftMessageId: id }),
   aiEnabled: true, // Will be updated when AI status is fetched
   setAIEnabled: (enabled) => set({ aiEnabled: enabled }),
   pageContext: null,
   setPageContext: (context) => set({
     pageContext: context,
     // Clear messages when switching pages to remove old drafts
-    messages: []
+    messages: [],
+    currentDraftMessageId: null,
   }),
   pageReloadTrigger: 0,
   triggerPageReload: () => set((state) => ({ pageReloadTrigger: state.pageReloadTrigger + 1 })),
