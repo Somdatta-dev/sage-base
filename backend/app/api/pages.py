@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
-from typing import List, Optional
+from typing import List, Optional, Sequence, Mapping, Any
+from collections import defaultdict
 from slugify import slugify
 from datetime import datetime
 
@@ -45,29 +46,33 @@ def extract_text_from_content(content_json: dict) -> str:
     return " ".join(extract_text(content_json))
 
 
-def build_page_tree(pages: List[Page], parent_id: Optional[int] = None) -> List[PageTreeItem]:
-    """Build hierarchical page tree from flat list using optimized O(n) algorithm."""
-    # Build lookup dictionary: parent_id -> list of children (O(n))
-    pages_by_parent = {}
+def build_page_tree(
+    pages: Sequence[Mapping[str, Any]],
+    parent_id: Optional[int] = None
+) -> List[PageTreeItem]:
+    """Build hierarchical page tree using lightweight rows (no JSON blobs)."""
+    pages_by_parent: dict[Optional[int], list[Mapping[str, Any]]] = defaultdict(list)
     for page in pages:
-        if page.parent_id not in pages_by_parent:
-            pages_by_parent[page.parent_id] = []
-        pages_by_parent[page.parent_id].append(page)
+        pages_by_parent[page["parent_id"]].append(page)
 
-    # Recursive function to build tree using dict lookup (O(n) total)
     def build_children(pid: Optional[int]) -> List[PageTreeItem]:
-        children = []
+        children: List[PageTreeItem] = []
         for page in pages_by_parent.get(pid, []):
-            item = PageTreeItem(
-                id=page.id,
-                title=page.title,
-                slug=page.slug,
-                parent_id=page.parent_id,
-                position=page.position,
-                status=page.status,
-                children=build_children(page.id)  # Now O(1) lookup instead of O(n)
+            status_value = page["status"]
+            if isinstance(status_value, str):
+                status_value = PageStatus(status_value)
+
+            children.append(
+                PageTreeItem(
+                    id=page["id"],
+                    title=page["title"],
+                    slug=page["slug"],
+                    parent_id=page["parent_id"],
+                    position=page["position"],
+                    status=status_value,
+                    children=build_children(page["id"]),
+                )
             )
-            children.append(item)
         return sorted(children, key=lambda x: x.position)
 
     return build_children(parent_id)
@@ -113,13 +118,20 @@ async def get_page_tree(
         raise HTTPException(status_code=404, detail="Space not found")
     
     result = await db.execute(
-        select(Page)
+        select(
+            Page.id,
+            Page.parent_id,
+            Page.title,
+            Page.slug,
+            Page.position,
+            Page.status,
+        )
         .where(Page.space_id == space_id)
         .order_by(Page.position)
     )
-    pages = result.scalars().all()
-    
-    return build_page_tree(pages)
+    page_rows = result.mappings().all()
+
+    return build_page_tree(page_rows)
 
 
 @router.post("", response_model=PageResponse, status_code=status.HTTP_201_CREATED)
