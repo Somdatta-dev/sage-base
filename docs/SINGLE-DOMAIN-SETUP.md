@@ -19,6 +19,17 @@ Client Request → Nginx (Port 80) → Routes based on path:
 - **Backend API**: `https://sagebase.somdatta.dev/api/`
 - **File Uploads**: `https://sagebase.somdatta.dev/uploads/`
 
+## Important: Fix for Images Not Loading in Docker/Cloud
+
+If uploaded images render as broken images, the most common cause is that the backend returns an **absolute** image URL using `API_DOMAIN` (often defaulting to `http://localhost:8787` inside containers).
+
+SageBase now returns **relative** upload URLs (e.g. `/uploads/2026/02/<id>.png`) so images always load from the same origin as the frontend and can be routed by Nginx.
+
+This requires:
+
+- Nginx routing for [`/uploads/*`](nginx.conf:37)
+- Persistent volume mount for `/app/uploads`
+
 ## Benefits
 
 ✅ **No CORS issues** - Same domain for frontend and backend

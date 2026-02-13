@@ -45,13 +45,17 @@ async def upload_file(
     async with aiofiles.open(full_path, "wb") as f:
         await f.write(content)
     
-    # Build absolute URL for the frontend
-    base_url = settings.API_DOMAIN.rstrip("/")
-    
+    # IMPORTANT (Docker/Cloud): returning an absolute URL based on API_DOMAIN is brittle.
+    # In many deployments the API is not directly exposed (only the reverse proxy is),
+    # so API_DOMAIN may still be the default http://localhost:8787 which will break
+    # image loading in the browser.
+    #
+    # Return a relative URL so the browser loads the image from the same origin
+    # (and Nginx can route /uploads/* to the backend).
     return {
         "filename": file.filename,
         "path": relative_path,
-        "url": f"{base_url}/uploads/{relative_path}",
+        "url": f"/uploads/{relative_path}",
         "size": len(content),
         "content_type": file.content_type,
     }
