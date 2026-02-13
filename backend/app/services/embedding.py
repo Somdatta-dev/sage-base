@@ -50,33 +50,42 @@ async def get_embedding(text: str) -> Optional[List[float]]:
 
 async def index_page(page_id: int, title: str, content_text: str, space_id: int):
     """Index a page in Qdrant for semantic search."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if not settings.OPENAI_API_KEY:
+        logger.debug(f"Skipping index for page {page_id}: OPENAI_API_KEY not configured")
         return
     
-    text = f"{title}\n\n{content_text}"
-    embedding = await get_embedding(text)
-    
-    if not embedding:
-        return
-    
-    client = await get_async_qdrant_client()
-    await ensure_collection_exists(client)
-    
-    await client.upsert(
-        collection_name=COLLECTION_NAME,
-        points=[
-            PointStruct(
-                id=page_id,
-                vector=embedding,
-                payload={
-                    "page_id": page_id,
-                    "title": title,
-                    "space_id": space_id,
-                    "content_preview": content_text[:500] if content_text else ""
-                }
-            )
-        ]
-    )
+    try:
+        text = f"{title}\n\n{content_text}"
+        embedding = await get_embedding(text)
+        
+        if not embedding:
+            logger.warning(f"Failed to generate embedding for page {page_id}")
+            return
+        
+        client = await get_async_qdrant_client()
+        await ensure_collection_exists(client)
+        
+        await client.upsert(
+            collection_name=COLLECTION_NAME,
+            points=[
+                PointStruct(
+                    id=page_id,
+                    vector=embedding,
+                    payload={
+                        "page_id": page_id,
+                        "title": title,
+                        "space_id": space_id,
+                        "content_preview": content_text[:500] if content_text else ""
+                    }
+                )
+            ]
+        )
+        logger.info(f"Successfully indexed page {page_id}: {title}")
+    except Exception as e:
+        logger.error(f"Failed to index page {page_id}: {type(e).__name__}: {e}")
 
 
 async def update_page_embedding(page_id: int, title: str, content_text: str, space_id: int):
@@ -106,16 +115,21 @@ async def delete_page_from_index(page_id: int):
 
 async def semantic_search(query: str, space_id: Optional[int] = None, limit: int = 10) -> List[dict]:
     """Perform semantic search using embeddings."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if not settings.OPENAI_API_KEY:
+        logger.warning("Semantic search skipped: OPENAI_API_KEY not configured")
         return []
-    
-    embedding = await get_embedding(query)
-    if not embedding:
-        return []
-    
-    client = await get_async_qdrant_client()
     
     try:
+        embedding = await get_embedding(query)
+        if not embedding:
+            logger.warning("Semantic search failed: Could not generate embedding for query")
+            return []
+        
+        client = await get_async_qdrant_client()
+        
         filter_conditions = None
         if space_id:
             from qdrant_client.models import Filter, FieldCondition, MatchValue
@@ -132,6 +146,8 @@ async def semantic_search(query: str, space_id: Optional[int] = None, limit: int
             limit=limit
         )
         
+        logger.info(f"Semantic search found {len(results)} results for query: {query[:50]}...")
+        
         return [
             {
                 "page_id": hit.payload["page_id"],
@@ -141,6 +157,7 @@ async def semantic_search(query: str, space_id: Optional[int] = None, limit: int
             }
             for hit in results
         ]
-    except Exception:
+    except Exception as e:
+        logger.error(f"Semantic search error: {type(e).__name__}: {e}")
         return []
 

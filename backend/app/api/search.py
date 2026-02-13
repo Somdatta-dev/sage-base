@@ -3,9 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from typing import List, Optional
 from pydantic import BaseModel
+import logging
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.config import settings
 from app.models.user import User
 from app.models.space import Space
 from app.models.page import Page
@@ -13,6 +15,14 @@ from app.schemas.page import PageResponse
 from app.services.embedding import semantic_search
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+class SemanticSearchStatus(BaseModel):
+    enabled: bool
+    openai_configured: bool
+    qdrant_host: str
+    qdrant_port: int
 
 
 class SemanticSearchResult(BaseModel):
@@ -20,6 +30,21 @@ class SemanticSearchResult(BaseModel):
     title: str
     content_preview: str
     score: float
+
+
+@router.get("/semantic/status", response_model=SemanticSearchStatus)
+async def get_semantic_search_status(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Check if semantic search is configured and available.
+    """
+    return SemanticSearchStatus(
+        enabled=bool(settings.OPENAI_API_KEY),
+        openai_configured=bool(settings.OPENAI_API_KEY),
+        qdrant_host=settings.QDRANT_HOST,
+        qdrant_port=settings.QDRANT_PORT,
+    )
 
 
 @router.get("", response_model=List[PageResponse])

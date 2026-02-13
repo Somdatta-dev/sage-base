@@ -25,6 +25,22 @@ export function SearchModal() {
   const [semanticResults, setSemanticResults] = useState<SemanticSearchResult[]>([]);
   const [isSemanticSearch, setIsSemanticSearch] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [semanticSearchEnabled, setSemanticSearchEnabled] = useState<boolean | null>(null);
+
+  // Check semantic search status on mount
+  useEffect(() => {
+    const checkSemanticStatus = async () => {
+      try {
+        const status = await searchApi.semanticStatus();
+        console.log("Semantic search status:", status);
+        setSemanticSearchEnabled(status.enabled);
+      } catch (err) {
+        console.error("Failed to check semantic search status:", err);
+        setSemanticSearchEnabled(false);
+      }
+    };
+    checkSemanticStatus();
+  }, []);
 
   const search = useCallback(async (q: string) => {
     if (!q.trim()) {
@@ -44,23 +60,26 @@ export function SearchModal() {
       setResults(pages);
       setSelectedIndex(0);
       
-      // If no results, try semantic search automatically
-      if (pages.length === 0) {
+      // If no results and semantic search is enabled, try it automatically
+      if (pages.length === 0 && semanticSearchEnabled) {
         try {
+          console.log("No keyword results, trying semantic search...");
           const semanticPages = await searchApi.semantic(q);
+          console.log("Semantic search results:", semanticPages);
           setSemanticResults(semanticPages);
           setIsSemanticSearch(true);
-        } catch {
-          // Semantic search might not be configured (no OPENAI_API_KEY)
-          console.log("Semantic search not available");
+        } catch (err) {
+          // Semantic search might have failed
+          console.error("Semantic search error:", err);
         }
       }
-    } catch {
+    } catch (err) {
+      console.error("Search error:", err);
       setResults([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [semanticSearchEnabled]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

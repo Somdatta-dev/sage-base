@@ -236,7 +236,12 @@ export const searchApi = {
     const params = new URLSearchParams({ q: query });
     if (spaceId) params.append("space_id", String(spaceId));
     if (limit) params.append("limit", String(limit));
-    return fetchWithAuth(`/api/search/semantic?${params}`);
+    return fetchWithAuth(`/api/search/semantic?${params}`, {
+      timeoutMs: 30000, // Semantic search needs longer timeout for embedding generation
+    });
+  },
+  semanticStatus: (): Promise<{ enabled: boolean; openai_configured: boolean; qdrant_host: string; qdrant_port: number }> => {
+    return fetchWithAuth("/api/search/semantic/status");
   },
 };
 
