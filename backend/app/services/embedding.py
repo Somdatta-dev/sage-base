@@ -17,6 +17,7 @@ def get_qdrant_client() -> QdrantClient:
         host=settings.QDRANT_HOST,
         port=settings.QDRANT_PORT,
         api_key=settings.QDRANT_API_KEY or None,
+        https=settings.QDRANT_HTTPS,
         timeout=5,
     )
 
@@ -27,6 +28,7 @@ async def get_async_qdrant_client() -> AsyncQdrantClient:
         host=settings.QDRANT_HOST,
         port=settings.QDRANT_PORT,
         api_key=settings.QDRANT_API_KEY or None,
+        https=settings.QDRANT_HTTPS,
         timeout=5,
     )
 

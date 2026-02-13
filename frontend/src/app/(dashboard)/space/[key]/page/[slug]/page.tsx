@@ -45,6 +45,8 @@ export default function PageViewPage() {
   const [showUpdateRequest, setShowUpdateRequest] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const prevReloadTriggerRef = useRef(0);
+  const contentRef = useRef<Record<string, unknown> | null>(null);
+  const titleRef = useRef("");
   const { user } = useAuthStore();
 
   useEffect(() => {
@@ -78,14 +80,24 @@ export default function PageViewPage() {
     load();
   }, [params.key, params.slug, router, setCurrentSpace, setPageTree]);
 
+  // Keep refs in sync so handleSave always has latest values
+  contentRef.current = content;
+  titleRef.current = title;
+
   const handleSave = useCallback(async () => {
     if (!page) return;
+
+    const currentContent = contentRef.current;
+    const currentTitle = titleRef.current;
+
+    // Don't save if there's no content yet
+    if (!currentContent) return;
 
     setSaving(true);
     try {
       const updated = await pagesApi.update(page.id, {
-        title,
-        content_json: content || undefined,
+        title: currentTitle,
+        content_json: currentContent,
       });
       setPage(updated);
       setSaved(true);
@@ -95,7 +107,7 @@ export default function PageViewPage() {
     } finally {
       setSaving(false);
     }
-  }, [page, title, content]);
+  }, [page]);
 
   const isPageOwner = user && page && page.author_id === user.id;
   const isSpaceOwner = user && space && space.owner_id === user.id;
@@ -126,6 +138,24 @@ export default function PageViewPage() {
 
   const handleRefresh = async () => {
     if (!page || !space) return;
+
+    // Cancel any pending auto-save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
+    // Save current content before refreshing to avoid data loss
+    if (contentRef.current) {
+      try {
+        await pagesApi.update(page.id, {
+          title: titleRef.current,
+          content_json: contentRef.current,
+        });
+      } catch (error) {
+        console.error("Failed to save before refresh:", error);
+      }
+    }
 
     try {
       const pageData = await pagesApi.getBySlug(space.id, page.slug);

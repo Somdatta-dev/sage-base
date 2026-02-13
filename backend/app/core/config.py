@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6337
     QDRANT_API_KEY: str = ""
+    QDRANT_HTTPS: bool = False
     
     # AI Model Configuration (OpenAI-compatible, works with vLLM)
     OPENAI_API_KEY: str = ""
