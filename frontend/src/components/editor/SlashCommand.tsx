@@ -20,6 +20,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { filesApi } from "@/lib/api";
+
 interface CommandItem {
   title: string;
   description: string;
@@ -173,22 +175,9 @@ const commands: CommandItem[] = [
       input.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
         if (!file) return;
-
-        const formData = new FormData();
-        formData.append("file", file);
-
         try {
-          const token = localStorage.getItem("auth_token");
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787"}/api/files/upload`,
-            {
-              method: "POST",
-              headers: token ? { Authorization: `Bearer ${token}` } : {},
-              body: formData,
-            }
-          );
-          const data = await res.json();
-          if (data.url) {
+          const data = await filesApi.upload(file);
+          if (data?.url) {
             // Insert image followed by empty paragraph
             editor
               .chain()
