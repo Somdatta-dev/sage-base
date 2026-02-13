@@ -32,20 +32,21 @@ async def get_collection_info() -> dict:
         collection_names = [c.name for c in collections.collections]
         
         if COLLECTION_NAME not in collection_names:
+            logger.info(f"Collection {COLLECTION_NAME} not found. Existing collections: {collection_names}")
             return {"exists": False, "collection_name": COLLECTION_NAME}
         
         # Get collection stats
         collection_info = await client.get_collection(COLLECTION_NAME)
+        logger.info(f"Collection {COLLECTION_NAME} found with {collection_info.points_count} points")
         return {
             "exists": True,
             "collection_name": COLLECTION_NAME,
             "points_count": collection_info.points_count,
-            "vectors_count": collection_info.vectors_count,
-            "status": collection_info.status.value,
+            "status": collection_info.status.value if hasattr(collection_info.status, 'value') else str(collection_info.status),
         }
     except Exception as e:
-        logger.error(f"Failed to get collection info: {e}")
-        return {"exists": False, "error": str(e)}
+        logger.error(f"Failed to get collection info: {type(e).__name__}: {e}")
+        return {"exists": False, "error": f"{type(e).__name__}: {str(e)}"}
 
 
 async def ensure_collection_exists(client: AsyncQdrantClient):
