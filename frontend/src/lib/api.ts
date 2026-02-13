@@ -240,7 +240,15 @@ export const searchApi = {
       timeoutMs: 30000, // Semantic search needs longer timeout for embedding generation
     });
   },
-  semanticStatus: (): Promise<{ enabled: boolean; openai_configured: boolean; qdrant_host: string; qdrant_port: number }> => {
+  semanticStatus: (): Promise<{
+    enabled: boolean;
+    openai_configured: boolean;
+    qdrant_host: string;
+    qdrant_port: number;
+    collection_exists: boolean;
+    points_count: number | null;
+    error: string | null;
+  }> => {
     return fetchWithAuth("/api/search/semantic/status");
   },
 };

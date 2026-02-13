@@ -26,6 +26,8 @@ export function SearchModal() {
   const [isSemanticSearch, setIsSemanticSearch] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [semanticSearchEnabled, setSemanticSearchEnabled] = useState<boolean | null>(null);
+  const [collectionExists, setCollectionExists] = useState<boolean | null>(null);
+  const [pointsCount, setPointsCount] = useState<number | null>(null);
 
   // Check semantic search status on mount
   useEffect(() => {
@@ -34,6 +36,8 @@ export function SearchModal() {
         const status = await searchApi.semanticStatus();
         console.log("Semantic search status:", status);
         setSemanticSearchEnabled(status.enabled);
+        setCollectionExists(status.collection_exists);
+        setPointsCount(status.points_count);
       } catch (err) {
         console.error("Failed to check semantic search status:", err);
         setSemanticSearchEnabled(false);
@@ -278,9 +282,21 @@ export function SearchModal() {
             <div className="p-8 text-center">
               <FileText className="w-12 h-12 text-gray-600 mx-auto mb-3" />
               <p className="text-gray-400">No results found</p>
-              <p className="text-sm text-gray-600 mt-1">
-                Try different keywords
-              </p>
+              {semanticSearchEnabled && !collectionExists && (
+                <p className="text-sm text-amber-500 mt-2">
+                  ⚠️ Vector index not found. Publish some pages to enable semantic search.
+                </p>
+              )}
+              {semanticSearchEnabled && collectionExists && pointsCount === 0 && (
+                <p className="text-sm text-amber-500 mt-2">
+                  ⚠️ No pages indexed. Publish some pages to enable semantic search.
+                </p>
+              )}
+              {!semanticSearchEnabled && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Try different keywords
+                </p>
+              )}
             </div>
           )}
 

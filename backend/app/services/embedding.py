@@ -3,6 +3,9 @@ from qdrant_client import QdrantClient, AsyncQdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 import openai
 from app.core.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Qdrant collection name
 COLLECTION_NAME = "sagebase_pages"
@@ -16,6 +19,33 @@ def get_qdrant_client() -> QdrantClient:
 async def get_async_qdrant_client() -> AsyncQdrantClient:
     """Get async Qdrant client."""
     return AsyncQdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
+
+
+async def get_collection_info() -> dict:
+    """Get information about the Qdrant collection."""
+    if not settings.OPENAI_API_KEY:
+        return {"exists": False, "error": "OPENAI_API_KEY not configured"}
+    
+    try:
+        client = await get_async_qdrant_client()
+        collections = await client.get_collections()
+        collection_names = [c.name for c in collections.collections]
+        
+        if COLLECTION_NAME not in collection_names:
+            return {"exists": False, "collection_name": COLLECTION_NAME}
+        
+        # Get collection stats
+        collection_info = await client.get_collection(COLLECTION_NAME)
+        return {
+            "exists": True,
+            "collection_name": COLLECTION_NAME,
+            "points_count": collection_info.points_count,
+            "vectors_count": collection_info.vectors_count,
+            "status": collection_info.status.value,
+        }
+    except Exception as e:
+        logger.error(f"Failed to get collection info: {e}")
+        return {"exists": False, "error": str(e)}
 
 
 async def ensure_collection_exists(client: AsyncQdrantClient):

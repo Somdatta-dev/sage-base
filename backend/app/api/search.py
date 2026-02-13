@@ -12,7 +12,7 @@ from app.models.user import User
 from app.models.space import Space
 from app.models.page import Page
 from app.schemas.page import PageResponse
-from app.services.embedding import semantic_search
+from app.services.embedding import semantic_search, get_collection_info
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -23,6 +23,9 @@ class SemanticSearchStatus(BaseModel):
     openai_configured: bool
     qdrant_host: str
     qdrant_port: int
+    collection_exists: bool
+    points_count: Optional[int] = None
+    error: Optional[str] = None
 
 
 class SemanticSearchResult(BaseModel):
@@ -39,11 +42,16 @@ async def get_semantic_search_status(
     """
     Check if semantic search is configured and available.
     """
+    collection_info = await get_collection_info()
+    
     return SemanticSearchStatus(
         enabled=bool(settings.OPENAI_API_KEY),
         openai_configured=bool(settings.OPENAI_API_KEY),
         qdrant_host=settings.QDRANT_HOST,
         qdrant_port=settings.QDRANT_PORT,
+        collection_exists=collection_info.get("exists", False),
+        points_count=collection_info.get("points_count"),
+        error=collection_info.get("error"),
     )
 
 
