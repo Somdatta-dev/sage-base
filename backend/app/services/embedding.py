@@ -68,14 +68,18 @@ async def get_embedding(text: str) -> Optional[List[float]]:
     """Get embedding from OpenAI."""
     if not settings.OPENAI_API_KEY:
         return None
-    
-    client = openai.AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-    
+
+    client = openai.AsyncOpenAI(
+        api_key=settings.OPENAI_API_KEY,
+        base_url=settings.OPENAI_BASE_URL
+    )
+
     response = await client.embeddings.create(
         model=settings.EMBEDDING_MODEL,
-        input=text
+        input=text,
+        dimensions=settings.EMBEDDING_DIMENSIONS
     )
-    
+
     return response.data[0].embedding
 
 
@@ -147,20 +151,25 @@ async def delete_page_from_index(page_id: int):
 async def semantic_search(query: str, space_id: Optional[int] = None, limit: int = 10) -> List[dict]:
     """Perform semantic search using embeddings."""
     import logging
+    import traceback
     logger = logging.getLogger(__name__)
-    
+
     if not settings.OPENAI_API_KEY:
         logger.warning("Semantic search skipped: OPENAI_API_KEY not configured")
         return []
-    
+
     try:
+        logger.info(f"Semantic search starting for query: '{query[:50]}', space_id={space_id}")
+
         embedding = await get_embedding(query)
         if not embedding:
             logger.warning("Semantic search failed: Could not generate embedding for query")
             return []
-        
+
+        logger.info(f"Generated embedding with {len(embedding)} dimensions")
+
         client = await get_async_qdrant_client()
-        
+
         filter_conditions = None
         if space_id:
             from qdrant_client.models import Filter, FieldCondition, MatchValue
@@ -169,26 +178,38 @@ async def semantic_search(query: str, space_id: Optional[int] = None, limit: int
                     FieldCondition(key="space_id", match=MatchValue(value=space_id))
                 ]
             )
-        
-        results = await client.search(
+
+        # Use query_points (client.search was removed in qdrant-client v1.15+)
+        response = await client.query_points(
             collection_name=COLLECTION_NAME,
-            query_vector=embedding,
+            query=embedding,
             query_filter=filter_conditions,
-            limit=limit
+            limit=limit,
+            score_threshold=0.3,
+            with_payload=True,
         )
-        
-        logger.info(f"Semantic search found {len(results)} results for query: {query[:50]}...")
-        
-        return [
-            {
-                "page_id": hit.payload["page_id"],
-                "title": hit.payload["title"],
-                "content_preview": hit.payload.get("content_preview", ""),
-                "score": hit.score
-            }
-            for hit in results
-        ]
+
+        results = response.points
+        logger.info(f"Qdrant returned {len(results)} raw results for query: '{query[:50]}'")
+        for hit in results:
+            logger.info(f"  Hit: score={hit.score}, payload_keys={list(hit.payload.keys()) if hit.payload else 'None'}")
+
+        search_results = []
+        for hit in results:
+            try:
+                search_results.append({
+                    "page_id": hit.payload["page_id"],
+                    "title": hit.payload["title"],
+                    "content_preview": hit.payload.get("content_preview", ""),
+                    "score": hit.score
+                })
+            except (KeyError, TypeError) as e:
+                logger.error(f"Failed to process hit payload: {e}, payload={hit.payload}")
+                continue
+
+        return search_results
     except Exception as e:
         logger.error(f"Semantic search error: {type(e).__name__}: {e}")
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
         return []
 

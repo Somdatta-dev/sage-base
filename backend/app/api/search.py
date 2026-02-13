@@ -107,8 +107,93 @@ async def semantic_search_pages(
     Semantic search using vector embeddings.
     Requires OPENAI_API_KEY to be configured.
     """
+    logger.info(f"Semantic search API called with q='{q}', space_id={space_id}, limit={limit}")
     results = await semantic_search(q, space_id=space_id, limit=limit)
+    logger.info(f"Semantic search API returning {len(results)} results")
     return [SemanticSearchResult(**r) for r in results]
+
+
+class SemanticSearchDebugResult(BaseModel):
+    query: str
+    embedding_generated: bool
+    embedding_dimensions: Optional[int] = None
+    qdrant_connected: bool
+    raw_results_count: int
+    results: List[SemanticSearchResult]
+    error: Optional[str] = None
+
+
+@router.get("/semantic/debug", response_model=SemanticSearchDebugResult)
+async def debug_semantic_search(
+    q: str = Query(..., min_length=1, description="Search query"),
+    space_id: Optional[int] = Query(None, description="Filter by space ID"),
+    limit: int = Query(10, ge=1, le=50, description="Max results"),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """
+    Debug endpoint for semantic search. Returns detailed diagnostic info.
+    Admin only.
+    """
+    import traceback
+    from app.services.embedding import get_embedding, get_async_qdrant_client, COLLECTION_NAME
+
+    result = SemanticSearchDebugResult(
+        query=q,
+        embedding_generated=False,
+        qdrant_connected=False,
+        raw_results_count=0,
+        results=[],
+    )
+
+    try:
+        # Step 1: Generate embedding
+        embedding = await get_embedding(q)
+        if not embedding:
+            result.error = "Failed to generate embedding (OpenAI API may be failing)"
+            return result
+        result.embedding_generated = True
+        result.embedding_dimensions = len(embedding)
+
+        # Step 2: Connect to Qdrant
+        client = await get_async_qdrant_client()
+        result.qdrant_connected = True
+
+        # Step 3: Build filter
+        filter_conditions = None
+        if space_id:
+            from qdrant_client.models import Filter, FieldCondition, MatchValue
+            filter_conditions = Filter(
+                must=[FieldCondition(key="space_id", match=MatchValue(value=space_id))]
+            )
+
+        # Step 4: Query Qdrant
+        response = await client.query_points(
+            collection_name=COLLECTION_NAME,
+            query=embedding,
+            query_filter=filter_conditions,
+            limit=limit,
+            score_threshold=0.3,
+            with_payload=True,
+        )
+
+        hits = response.points
+        result.raw_results_count = len(hits)
+
+        for hit in hits:
+            try:
+                result.results.append(SemanticSearchResult(
+                    page_id=hit.payload["page_id"],
+                    title=hit.payload["title"],
+                    content_preview=hit.payload.get("content_preview", ""),
+                    score=hit.score,
+                ))
+            except (KeyError, TypeError) as e:
+                result.error = f"Payload processing error: {e}, payload={hit.payload}"
+
+    except Exception as e:
+        result.error = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"
+
+    return result
 
 
 class ReindexResponse(BaseModel):

@@ -257,7 +257,7 @@ export function Sidebar() {
               )}
             >
               <Users className="w-4 h-4" />
-              <span>User Management</span>
+              <span>Admin Panel</span>
             </Link>
           )}
         </div>
