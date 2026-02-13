@@ -13,29 +13,9 @@ function getToken(): string | null {
   if (typeof window === "undefined") {
     return null;
   }
-
-  // Primary: Zustand store state (works after hydration)
-  try {
-    // Lazy import to avoid circular dependency and SSR issues
-    const { useAuthStore } = require("./store");
-    const tokenFromStore = useAuthStore.getState().token;
-    if (tokenFromStore) return tokenFromStore;
-  } catch {
-    // ignore and fall back to localStorage
-  }
-
-  // Fallback: read persisted token directly from localStorage.
-  // This avoids a race where UI renders before Zustand rehydration completes,
-  // which would cause authenticated calls (like file upload) to 401.
-  try {
-    const raw = localStorage.getItem("sagebase-auth");
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { state?: { token?: string | null } };
-    const tokenFromStorage = parsed?.state?.token;
-    return tokenFromStorage || null;
-  } catch {
-    return null;
-  }
+  // Lazy import to avoid circular dependency and SSR issues
+  const { useAuthStore } = require("./store");
+  return useAuthStore.getState().token;
 }
 
 async function fetchWithAuth(url: string, options: AuthRequestInit = {}) {
@@ -235,17 +215,6 @@ export const filesApi = {
       headers,
       body: formData,
     });
-
-    // Keep behavior consistent with fetchWithAuth(): if auth is invalid/expired,
-    // clear local auth state and force a re-login.
-    if (response.status === 401) {
-      if (typeof window !== "undefined") {
-        const { useAuthStore } = require("./store");
-        useAuthStore.getState().clearAuth();
-        window.location.href = "/login";
-      }
-      throw new Error("Unauthorized");
-    }
 
     if (!response.ok) {
       throw new Error("Upload failed");
