@@ -196,6 +196,43 @@ async def debug_semantic_search(
     return result
 
 
+class ResetQdrantResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.post("/semantic/reset", response_model=ResetQdrantResponse)
+async def reset_qdrant_collection(
+    current_user: User = Depends(get_current_admin_user),
+):
+    """
+    Delete the Qdrant collection and all indexed data.
+    Admin only. Use reindex after this to rebuild.
+    """
+    from app.services.embedding import get_async_qdrant_client, COLLECTION_NAME
+
+    try:
+        client = await get_async_qdrant_client()
+        collections = await client.get_collections()
+        collection_names = [c.name for c in collections.collections]
+
+        if COLLECTION_NAME not in collection_names:
+            return ResetQdrantResponse(
+                success=True,
+                message=f"Collection '{COLLECTION_NAME}' does not exist. Nothing to reset.",
+            )
+
+        await client.delete_collection(COLLECTION_NAME)
+        logger.info(f"Qdrant collection '{COLLECTION_NAME}' deleted by {current_user.email}")
+        return ResetQdrantResponse(
+            success=True,
+            message=f"Collection '{COLLECTION_NAME}' deleted successfully. Use 'Reindex All Pages' to rebuild.",
+        )
+    except Exception as e:
+        logger.error(f"Failed to reset Qdrant: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset Qdrant: {e}")
+
+
 class ReindexResponse(BaseModel):
     success: bool
     message: str

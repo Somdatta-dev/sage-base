@@ -36,6 +36,7 @@ services:
       - qdrant_data:/qdrant/storage
     environment:
       QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:-}
     networks:
       - sagebase_network
 
@@ -68,6 +69,9 @@ services:
 
       # AI Configuration
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+      # Vector Database Auth
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
 
       # Storage
       UPLOAD_DIR: /app/uploads

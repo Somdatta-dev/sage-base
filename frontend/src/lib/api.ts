@@ -251,6 +251,12 @@ export const searchApi = {
   }> => {
     return fetchWithAuth("/api/search/semantic/status");
   },
+  resetQdrant: (): Promise<{ success: boolean; message: string }> => {
+    return fetchWithAuth("/api/search/semantic/reset", {
+      method: "POST",
+      timeoutMs: 30000,
+    });
+  },
   reindex: (): Promise<{
     success: boolean;
     message: string;

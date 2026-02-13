@@ -13,12 +13,22 @@ COLLECTION_NAME = "sagebase_pages"
 
 def get_qdrant_client() -> QdrantClient:
     """Get synchronous Qdrant client."""
-    return QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT, timeout=5)
+    return QdrantClient(
+        host=settings.QDRANT_HOST,
+        port=settings.QDRANT_PORT,
+        api_key=settings.QDRANT_API_KEY or None,
+        timeout=5,
+    )
 
 
 async def get_async_qdrant_client() -> AsyncQdrantClient:
     """Get async Qdrant client."""
-    return AsyncQdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT, timeout=5)
+    return AsyncQdrantClient(
+        host=settings.QDRANT_HOST,
+        port=settings.QDRANT_PORT,
+        api_key=settings.QDRANT_API_KEY or None,
+        timeout=5,
+    )
 
 
 async def get_collection_info() -> dict:

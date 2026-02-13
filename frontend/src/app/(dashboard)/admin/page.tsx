@@ -40,6 +40,7 @@ export default function AdminPage() {
     error: string | null;
   } | null>(null);
   const [reindexing, setReindexing] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [reindexResult, setReindexResult] = useState<{ message: string; errors: string[] } | null>(null);
 
   useEffect(() => {
@@ -61,6 +62,24 @@ export default function AdminPage() {
     }
   };
   
+  const handleResetQdrant = async () => {
+    if (!confirm("This will DELETE all indexed data from Qdrant. You will need to reindex afterwards. Continue?")) return;
+    setResetting(true);
+    setReindexResult(null);
+    try {
+      const result = await searchApi.resetQdrant();
+      setReindexResult({ message: result.message, errors: [] });
+      await loadSemanticStatus();
+    } catch (err) {
+      setReindexResult({
+        message: "Failed to reset Qdrant",
+        errors: [err instanceof Error ? err.message : "Unknown error"]
+      });
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const handleReindex = async () => {
     if (!confirm("This will reindex all published pages. It may take a few minutes. Continue?")) return;
     setReindexing(true);
@@ -351,8 +370,25 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {/* Reindex Button */}
-              <div className="flex justify-end">
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={handleResetQdrant}
+                  disabled={resetting || !semanticStatus.collection_exists}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 disabled:bg-gray-600/20 disabled:border-gray-600/20 disabled:cursor-not-allowed text-red-400 disabled:text-gray-500 rounded-lg transition-colors"
+                >
+                  {resetting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Resetting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Reset Qdrant
+                    </>
+                  )}
+                </button>
                 <button
                   onClick={handleReindex}
                   disabled={reindexing || !semanticStatus.enabled}
