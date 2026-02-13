@@ -14,9 +14,12 @@ import {
   X,
   Check,
   Ban,
+  Sparkles,
+  RefreshCw,
+  Database,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
-import { usersApi } from "@/lib/api";
+import { usersApi, searchApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { User as UserType } from "@/types";
 
@@ -28,6 +31,16 @@ export default function AdminPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [error, setError] = useState("");
+  
+  // Semantic search state
+  const [semanticStatus, setSemanticStatus] = useState<{
+    enabled: boolean;
+    collection_exists: boolean;
+    points_count: number | null;
+    error: string | null;
+  } | null>(null);
+  const [reindexing, setReindexing] = useState(false);
+  const [reindexResult, setReindexResult] = useState<{ message: string; errors: string[] } | null>(null);
 
   useEffect(() => {
     if (user && user.role !== "admin") {
@@ -35,7 +48,36 @@ export default function AdminPage() {
       return;
     }
     loadUsers();
+    loadSemanticStatus();
   }, [user, router]);
+  
+  const loadSemanticStatus = async () => {
+    try {
+      const status = await searchApi.semanticStatus();
+      setSemanticStatus(status);
+    } catch (err) {
+      console.error("Failed to load semantic status:", err);
+    }
+  };
+  
+  const handleReindex = async () => {
+    if (!confirm("This will reindex all published pages. It may take a few minutes. Continue?")) return;
+    setReindexing(true);
+    setReindexResult(null);
+    try {
+      const result = await searchApi.reindex();
+      setReindexResult({ message: result.message, errors: result.errors });
+      // Refresh status after reindex
+      await loadSemanticStatus();
+    } catch (err) {
+      setReindexResult({
+        message: "Failed to reindex",
+        errors: [err instanceof Error ? err.message : "Unknown error"]
+      });
+    } finally {
+      setReindexing(false);
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -229,6 +271,124 @@ export default function AdminPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Semantic Search Status Section */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-sage-400" />
+            Semantic Search
+          </h2>
+          <button
+            onClick={loadSemanticStatus}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+            title="Refresh status"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+          {semanticStatus ? (
+            <div className="space-y-4">
+              {/* Status Grid */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white/5 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
+                    <Sparkles className="w-4 h-4" />
+                    OpenAI Enabled
+                  </div>
+                  <p className={`text-lg font-semibold ${semanticStatus.enabled ? 'text-green-400' : 'text-red-400'}`}>
+                    {semanticStatus.enabled ? 'Yes' : 'No'}
+                  </p>
+                </div>
+                
+                <div className="bg-white/5 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
+                    <Database className="w-4 h-4" />
+                    Qdrant Collection
+                  </div>
+                  <p className={`text-lg font-semibold ${semanticStatus.collection_exists ? 'text-green-400' : 'text-yellow-400'}`}>
+                    {semanticStatus.collection_exists ? 'Exists' : 'Not Found'}
+                  </p>
+                </div>
+                
+                <div className="bg-white/5 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
+                    <Database className="w-4 h-4" />
+                    Indexed Pages
+                  </div>
+                  <p className="text-lg font-semibold text-white">
+                    {semanticStatus.points_count ?? 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Error Display */}
+              {semanticStatus.error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                  {semanticStatus.error}
+                </div>
+              )}
+
+              {/* Reindex Result */}
+              {reindexResult && (
+                <div className={`p-3 rounded-lg text-sm ${
+                  reindexResult.errors.length > 0
+                    ? 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400'
+                    : 'bg-green-500/10 border border-green-500/20 text-green-400'
+                }`}>
+                  <p>{reindexResult.message}</p>
+                  {reindexResult.errors.length > 0 && (
+                    <ul className="mt-2 list-disc list-inside">
+                      {reindexResult.errors.map((err, i) => (
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {/* Reindex Button */}
+              <div className="flex justify-end">
+                <button
+                  onClick={handleReindex}
+                  disabled={reindexing || !semanticStatus.enabled}
+                  className="flex items-center gap-2 px-4 py-2 bg-sage-600 hover:bg-sage-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                >
+                  {reindexing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Reindexing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      Reindex All Pages
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Help Text */}
+              {!semanticStatus.enabled && (
+                <p className="text-sm text-gray-500">
+                  Semantic search requires OPENAI_API_KEY to be configured in the backend.
+                </p>
+              )}
+              {semanticStatus.enabled && semanticStatus.points_count === 0 && (
+                <p className="text-sm text-gray-500">
+                  No pages are indexed. Pages are indexed when they are published. Click "Reindex All Pages" to index all published pages.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-sage-500" />
+            </div>
+          )}
+        </div>
       </div>
 
       {showModal && (

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from typing import List, Optional
@@ -6,13 +6,13 @@ from pydantic import BaseModel
 import logging
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_current_admin_user
 from app.core.config import settings
 from app.models.user import User
 from app.models.space import Space
-from app.models.page import Page
+from app.models.page import Page, PageStatus
 from app.schemas.page import PageResponse
-from app.services.embedding import semantic_search, get_collection_info
+from app.services.embedding import semantic_search, get_collection_info, index_page
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -109,3 +109,68 @@ async def semantic_search_pages(
     """
     results = await semantic_search(q, space_id=space_id, limit=limit)
     return [SemanticSearchResult(**r) for r in results]
+
+
+class ReindexResponse(BaseModel):
+    success: bool
+    message: str
+    pages_found: int
+    pages_indexed: int
+    errors: List[str]
+
+
+@router.post("/semantic/reindex", response_model=ReindexResponse)
+async def reindex_all_pages(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """
+    Reindex all published pages in the vector store.
+    Admin only endpoint.
+    """
+    if not settings.OPENAI_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="Semantic search is not available. OPENAI_API_KEY not configured."
+        )
+    
+    # Get all published pages
+    result = await db.execute(
+        select(Page).where(Page.status == PageStatus.PUBLISHED)
+    )
+    pages = result.scalars().all()
+    
+    if not pages:
+        return ReindexResponse(
+            success=True,
+            message="No published pages found to index",
+            pages_found=0,
+            pages_indexed=0,
+            errors=[]
+        )
+    
+    errors = []
+    indexed_count = 0
+    
+    for page in pages:
+        try:
+            await index_page(
+                page_id=page.id,
+                title=page.title,
+                content_text=page.content_text or "",
+                space_id=page.space_id
+            )
+            indexed_count += 1
+            logger.info(f"Indexed page {page.id}: {page.title}")
+        except Exception as e:
+            error_msg = f"Failed to index page {page.id} ({page.title}): {str(e)}"
+            errors.append(error_msg)
+            logger.error(error_msg)
+    
+    return ReindexResponse(
+        success=True,
+        message=f"Reindexing complete. Indexed {indexed_count}/{len(pages)} pages.",
+        pages_found=len(pages),
+        pages_indexed=indexed_count,
+        errors=errors
+    )

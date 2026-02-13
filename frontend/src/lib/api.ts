@@ -251,6 +251,18 @@ export const searchApi = {
   }> => {
     return fetchWithAuth("/api/search/semantic/status");
   },
+  reindex: (): Promise<{
+    success: boolean;
+    message: string;
+    pages_found: number;
+    pages_indexed: number;
+    errors: string[]
+  }> => {
+    return fetchWithAuth("/api/search/semantic/reindex", {
+      method: "POST",
+      timeoutMs: 300000, // 5 minutes for reindexing
+    });
+  },
 };
 
 // AI API
