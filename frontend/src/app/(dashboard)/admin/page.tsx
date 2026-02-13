@@ -43,7 +43,8 @@ export default function AdminPage() {
   const [reindexResult, setReindexResult] = useState<{ message: string; errors: string[] } | null>(null);
 
   useEffect(() => {
-    if (user && user.role !== "admin") {
+    if (!user) return;
+    if (user.role !== "admin") {
       router.push("/dashboard");
       return;
     }
