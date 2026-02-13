@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, FolderOpen, FileText, Clock, TrendingUp } from "lucide-react";
-import { useSpaceStore, useAuthStore } from "@/lib/store";
+import { useSpaceStore, useAuthStore, useAIStore } from "@/lib/store";
 import { spacesApi } from "@/lib/api";
 import { pagesApi } from "@/lib/api";
 import type { Page } from "@/types";
@@ -13,8 +13,14 @@ import { CreateSpaceModal } from "@/components/spaces/CreateSpaceModal";
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { spaces, setSpaces } = useSpaceStore();
+  const { setPageContext } = useAIStore();
   const [recentPages, setRecentPages] = useState<Page[]>([]);
   const [showCreateSpace, setShowCreateSpace] = useState(false);
+
+  // Clear AI page context when navigating to dashboard
+  useEffect(() => {
+    setPageContext(null);
+  }, [setPageContext]);
 
   useEffect(() => {
     spacesApi.list().then(setSpaces).catch(console.error);

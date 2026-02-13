@@ -18,7 +18,7 @@ import {
   RefreshCw,
   Database,
 } from "lucide-react";
-import { useAuthStore } from "@/lib/store";
+import { useAuthStore, useAIStore } from "@/lib/store";
 import { usersApi, searchApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { User as UserType } from "@/types";
@@ -26,6 +26,7 @@ import type { User as UserType } from "@/types";
 export default function AdminPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { setPageContext } = useAIStore();
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -42,6 +43,11 @@ export default function AdminPage() {
   const [reindexing, setReindexing] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [reindexResult, setReindexResult] = useState<{ message: string; errors: string[] } | null>(null);
+
+  // Clear AI page context when navigating to admin
+  useEffect(() => {
+    setPageContext(null);
+  }, [setPageContext]);
 
   useEffect(() => {
     if (!user) return;

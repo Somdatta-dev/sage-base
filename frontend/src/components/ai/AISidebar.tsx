@@ -73,6 +73,14 @@ export function AISidebar() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Clear draft and messages when navigating away from a page
+  useEffect(() => {
+    if (!pageContext) {
+      setCurrentDraftMessageId(null);
+      clearMessages();
+    }
+  }, [pageContext, setCurrentDraftMessageId, clearMessages]);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;

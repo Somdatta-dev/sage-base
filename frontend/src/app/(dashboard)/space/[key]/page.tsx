@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Plus, FileText, Settings, MoreHorizontal, Loader2 } from "lucide-react";
 import { spacesApi, pagesApi } from "@/lib/api";
-import { useSpaceStore } from "@/lib/store";
+import { useSpaceStore, useAIStore } from "@/lib/store";
 import type { Space, PageTreeItem } from "@/types";
 import { PageTree } from "@/components/pages/PageTree";
 import { CreatePageModal } from "@/components/pages/CreatePageModal";
@@ -14,9 +14,15 @@ export default function SpacePage() {
   const params = useParams();
   const router = useRouter();
   const { setCurrentSpace, setPageTree, pageTree } = useSpaceStore();
+  const { setPageContext } = useAIStore();
   const [space, setSpace] = useState<Space | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreatePage, setShowCreatePage] = useState(false);
+
+  // Clear AI page context when navigating to space overview
+  useEffect(() => {
+    setPageContext(null);
+  }, [setPageContext]);
 
   useEffect(() => {
     const loadSpace = async () => {
