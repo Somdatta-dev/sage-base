@@ -106,9 +106,9 @@ export function UpdateRequestList() {
 
         <ScrollArea className="max-h-[500px] pr-4">
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Loading...</div>
+            <div className="text-center py-8 text-[#9b9b9b]">Loading...</div>
           ) : requests.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-[#9b9b9b]">
               No pending update requests
             </div>
           ) : (
@@ -116,12 +116,12 @@ export function UpdateRequestList() {
               {requests.map((request) => (
                 <div
                   key={request.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50"
+                  className="border border-[#373737] rounded-lg p-4 hover:bg-[#2d2d2d] transition-colors"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h4 className="font-semibold">{request.title}</h4>
-                      <p className="text-sm text-gray-500">
+                      <h4 className="font-semibold text-[#e3e3e3]">{request.title}</h4>
+                      <p className="text-sm text-[#9b9b9b]">
                         Requested {formatDate(request.created_at)}
                       </p>
                     </div>
@@ -129,15 +129,15 @@ export function UpdateRequestList() {
                   </div>
 
                   {request.message && (
-                    <div className="bg-blue-50 border border-blue-200 rounded p-3 my-3">
-                      <p className="text-sm text-gray-700">{request.message}</p>
+                    <div className="bg-purple-500/10 border border-purple-500/20 rounded p-3 my-3">
+                      <p className="text-sm text-[#d4d4d4]">{request.message}</p>
                     </div>
                   )}
 
                   {request.content_text && (
-                    <div className="bg-gray-50 rounded p-3 my-3">
-                      <p className="text-xs text-gray-600 mb-1">Preview:</p>
-                      <p className="text-sm line-clamp-3">{request.content_text}</p>
+                    <div className="bg-[#1a1a1a] border border-[#373737] rounded p-3 my-3">
+                      <p className="text-xs text-[#9b9b9b] mb-1">Preview:</p>
+                      <p className="text-sm text-[#d4d4d4] line-clamp-3">{request.content_text}</p>
                     </div>
                   )}
 
