@@ -6,7 +6,6 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:18-alpine
-    container_name: sagebase-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-sagebase}
@@ -21,17 +20,19 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sagebase}"]
+      # Coolify can treat an early unhealthy status as a hard deployment failure.
+      # Give Postgres time to initialize before evaluating health.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sagebase} -d ${POSTGRES_DB:-sagebase}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
     networks:
       - sagebase_network
 
   # Qdrant Vector Database
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: sagebase-qdrant
     restart: unless-stopped
     ports:
       - "${QDRANT_PORT:-6333}:6333"
@@ -52,7 +53,6 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${WEBSITE_DOMAIN:-http://localhost}
         BUILD_ID: production
-    container_name: sagebase-app
     restart: unless-stopped
     expose:
       - "8549"
@@ -90,10 +90,11 @@ services:
     volumes:
       - uploads_data:/app/uploads
     depends_on:
-      postgres:
-        condition: service_healthy
-      qdrant:
-        condition: service_started
+      # The unified container already waits for Postgres in [`start.sh`](start.sh)
+      # and will not boot the API until DB is reachable.
+      # Using service_healthy here can cause Coolify to fail deployment early.
+      - postgres
+      - qdrant
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8787/api/health"]
       interval: 30s
