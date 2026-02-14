@@ -11,10 +11,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-sagebase}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sagebase_secret}
       POSTGRES_DB: ${POSTGRES_DB:-sagebase}
-      # IMPORTANT: postgres:18-alpine defaults PGDATA to /var/lib/postgresql/18/docker.
-      # Our named volume is mounted at /var/lib/postgresql/data, so force PGDATA to
-      # that location to ensure DB data persists across container recreation.
-      PGDATA: /var/lib/postgresql/data
+      # IMPORTANT:
+      # In some environments (notably bind-mounts on Linux hosts, including some Coolify setups),
+      # the mounted directory may contain host-created files like `lost+found`.
+      # Postgres `initdb` fails if the target directory exists and is not empty.
+      # Use a subdirectory for PGDATA so initialization always targets an empty folder.
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
