@@ -48,9 +48,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded bg-gradient-to-br from-[#ff6b6b] to-[#ffa502] flex items-center justify-center">
-              <span className="text-white text-sm font-bold">S</span>
-            </div>
+            <img src="/icon.svg" alt="SageBase" className="w-8 h-8 rounded" />
             <span className="text-xl font-semibold text-[#e3e3e3]">SageBase</span>
           </div>
           <p className="text-[#9b9b9b] text-sm">Sign in to your workspace</p>

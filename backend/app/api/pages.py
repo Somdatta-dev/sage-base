@@ -342,10 +342,18 @@ async def get_page_versions(
     result = await db.execute(
         select(PageVersion)
         .where(PageVersion.page_id == page_id)
-        .order_by(PageVersion.version.desc())
+        .order_by(PageVersion.version.desc(), PageVersion.is_published.desc())
     )
-    versions = result.scalars().all()
-    
+    all_versions = result.scalars().all()
+
+    # Deduplicate: keep only one row per version number (prefer published)
+    seen: set[int] = set()
+    versions = []
+    for v in all_versions:
+        if v.version not in seen:
+            seen.add(v.version)
+            versions.append(v)
+
     return [PageVersionResponse.model_validate(v) for v in versions]
 
 
@@ -359,6 +367,8 @@ async def get_page_version(
     result = await db.execute(
         select(PageVersion)
         .where(and_(PageVersion.page_id == page_id, PageVersion.version == version))
+        .order_by(PageVersion.is_published.desc())
+        .limit(1)
     )
     page_version = result.scalar_one_or_none()
 
@@ -521,16 +531,20 @@ async def get_version_diff(
     """
     Get diff between two page versions.
     """
-    # Get both versions
+    # Get both versions (prefer published row when duplicates exist)
     from_result = await db.execute(
         select(PageVersion)
         .where(and_(PageVersion.page_id == page_id, PageVersion.version == from_version))
+        .order_by(PageVersion.is_published.desc())
+        .limit(1)
     )
     from_ver = from_result.scalar_one_or_none()
 
     to_result = await db.execute(
         select(PageVersion)
         .where(and_(PageVersion.page_id == page_id, PageVersion.version == to_version))
+        .order_by(PageVersion.is_published.desc())
+        .limit(1)
     )
     to_ver = to_result.scalar_one_or_none()
 

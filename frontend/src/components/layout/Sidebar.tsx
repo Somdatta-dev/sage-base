@@ -212,9 +212,7 @@ export function Sidebar() {
     >
       {/* Workspace header */}
       <div className="px-3 py-3 flex items-center gap-2">
-        <div className="w-5 h-5 rounded bg-gradient-to-br from-[#ff6b6b] to-[#ffa502] flex items-center justify-center">
-          <span className="text-white text-xs font-semibold">S</span>
-        </div>
+        <img src="/icon.svg" alt="SageBase" className="w-5 h-5 rounded" />
         <span className="text-sm font-medium text-[#e3e3e3]">{user?.full_name || user?.email?.split('@')[0] || 'Workspace'}</span>
       </div>
 

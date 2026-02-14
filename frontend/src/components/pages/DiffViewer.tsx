@@ -63,21 +63,21 @@ export function DiffViewer({
           if (operation === -1) {
             // Deletion - red background
             return (
-              <div key={index} className="bg-red-50 border-l-4 border-red-500 px-2 py-1">
-                <span className="text-red-700">- {text}</span>
+              <div key={index} className="bg-red-500/10 border-l-4 border-red-500 px-2 py-1">
+                <span className="text-red-400">- {text}</span>
               </div>
             );
           } else if (operation === 1) {
             // Addition - green background
             return (
-              <div key={index} className="bg-green-50 border-l-4 border-green-500 px-2 py-1">
-                <span className="text-green-700">+ {text}</span>
+              <div key={index} className="bg-green-500/10 border-l-4 border-green-500 px-2 py-1">
+                <span className="text-green-400">+ {text}</span>
               </div>
             );
           } else {
             // Unchanged - gray
             return (
-              <div key={index} className="px-2 py-1 text-gray-600">
+              <div key={index} className="px-2 py-1 text-[#9b9b9b]">
                 <span>  {text}</span>
               </div>
             );
@@ -97,10 +97,10 @@ export function DiffViewer({
           <DialogDescription>
             {diff && (
               <div className="flex gap-2 mt-2">
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30">
                   +{diff.stats.additions} additions
                 </Badge>
-                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
+                <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30">
                   -{diff.stats.deletions} deletions
                 </Badge>
                 <Badge variant="outline">
@@ -113,13 +113,13 @@ export function DiffViewer({
 
         <ScrollArea className="max-h-[500px]">
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Loading diff...</div>
+            <div className="text-center py-8 text-[#9b9b9b]">Loading diff...</div>
           ) : diff ? (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border border-[#373737] rounded-lg overflow-hidden">
               {renderDiff()}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">No changes found</div>
+            <div className="text-center py-8 text-[#9b9b9b]">No changes found</div>
           )}
         </ScrollArea>
       </DialogContent>

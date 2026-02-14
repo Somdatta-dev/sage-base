@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ff6b6b"/>
+      <stop offset="100%" stop-color="#ffa502"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="180" y1="120" x2="380" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.25)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.05)"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+  <!-- Subtle leaf/page shape behind the S -->
+  <path d="M340 100c0 0-120 20-170 100s-50 180-10 230c20-60 70-110 130-140s110-40 140-30c-10-50-40-100-90-160z" fill="url(#leaf)"/>
+  <!-- Letter S -->
+  <path d="M310 175c-15-15-40-25-65-25c-50 0-85 30-85 72c0 45 35 58 75 70c30 9 50 18 50 40c0 25-22 42-52 42c-25 0-48-12-62-30l-30 35c22 25 55 41 90 41c55 0 90-32 90-76c0-48-38-62-78-74c-28-8-47-17-47-37c0-20 17-35 45-35c20 0 38 8 50 20l19-43z" fill="white"/>
+</svg>

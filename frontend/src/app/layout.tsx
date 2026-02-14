@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "SageBase - Internal Knowledge Base",
   description: "Your company's knowledge hub",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/icon.svg",
   },
 };
 

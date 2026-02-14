@@ -85,7 +85,7 @@ export function UpdateRequestModal({
 
           <div className="grid gap-2">
             <Label htmlFor="message">
-              Message to Page Owner <span className="text-gray-500">(optional)</span>
+              Message to Page Owner <span className="text-[#9b9b9b]">(optional)</span>
             </Label>
             <Textarea
               id="message"
@@ -96,9 +96,9 @@ export function UpdateRequestModal({
             />
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-blue-800">
-              💡 <strong>Tip:</strong> Your current edits will be included in this
+          <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
+            <p className="text-sm text-[#d4d4d4]">
+              💡 <strong className="text-[#e3e3e3]">Tip:</strong> Your current edits will be included in this
               request. The page owner can review the full diff before approving.
             </p>
           </div>
