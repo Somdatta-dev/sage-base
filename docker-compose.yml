@@ -12,6 +12,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-sagebase}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sagebase_secret}
       POSTGRES_DB: ${POSTGRES_DB:-sagebase}
+      # IMPORTANT: postgres:18-alpine defaults PGDATA to /var/lib/postgresql/18/docker.
+      # Our named volume is mounted at /var/lib/postgresql/data, so force PGDATA to
+      # that location to ensure DB data persists across container recreation.
+      PGDATA: /var/lib/postgresql/data
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:

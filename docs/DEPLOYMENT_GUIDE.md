@@ -38,12 +38,20 @@ chmod +x deploy-version-control.sh
 bash deploy-version-control.sh
 ```
 
-This will:
+This will (by default, **preserve all existing data**):
 1. Stop existing containers
 2. Rebuild with new dependencies (`diff-match-patch`)
 3. Run database migration (`002_add_version_control`)
 4. Re-index existing pages in Qdrant
 5. Start all services
+
+#### Optional: wipe data (development only)
+
+If you intentionally want a clean slate (this will delete PostgreSQL + Qdrant data volumes):
+
+```bash
+SAGEBASE_RESET_DATA=1 bash deploy-version-control.sh
+```
 
 ### Option 2: Manual Deployment
 
