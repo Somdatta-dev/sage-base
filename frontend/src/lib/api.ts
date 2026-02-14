@@ -282,6 +282,14 @@ interface AIChatResponse {
   created_page_slug: string | null;
 }
 
+interface AIHistoryMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  tool_calls: Array<{ name: string; args: Record<string, unknown> }>;
+  timestamp: string;
+}
+
 interface DocumentUploadResponse {
   document_id: string;
   filename: string;
@@ -367,10 +375,19 @@ export const aiApi = {
       timeoutMs: 60000,
     }),
 
-  clearSession: (sessionId: string = "default") =>
-    fetchWithAuth(`/api/ai/clear-session?session_id=${sessionId}`, {
+  clearSession: (sessionId: string = "default", pageId?: number) => {
+    const params = new URLSearchParams({ session_id: sessionId });
+    if (typeof pageId === "number") params.append("page_id", String(pageId));
+    return fetchWithAuth(`/api/ai/clear-session?${params.toString()}`, {
       method: "POST",
-    }),
+    });
+  },
+
+  getHistory: (sessionId: string = "global", pageId?: number): Promise<AIHistoryMessage[]> => {
+    const params = new URLSearchParams({ session_id: sessionId });
+    if (typeof pageId === "number") params.append("page_id", String(pageId));
+    return fetchWithAuth(`/api/ai/history?${params.toString()}`);
+  },
 
   getTranslateLanguages: (): Promise<SupportedLanguagesResponse> =>
     fetchWithAuth("/api/ai/translate/languages"),

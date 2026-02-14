@@ -51,6 +51,13 @@ export default function PageViewPage() {
 
   useEffect(() => {
     const load = async () => {
+      // Route params changed: immediately clear AI context so sidebar doesn't
+      // keep showing stale drafts/insert options while the new page loads.
+      setPageContext(null);
+      setLoading(true);
+      setPage(null);
+      setSpace(null);
+
       try {
         const spaceKey = params.key as string;
         const slug = params.slug as string;
@@ -78,7 +85,7 @@ export default function PageViewPage() {
     };
 
     load();
-  }, [params.key, params.slug, router, setCurrentSpace, setPageTree]);
+  }, [params.key, params.slug, router, setCurrentSpace, setPageTree, setPageContext]);
 
   // Keep refs in sync so handleSave always has latest values
   contentRef.current = content;

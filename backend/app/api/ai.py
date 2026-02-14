@@ -5,7 +5,7 @@ AI API endpoints for chat and summarization.
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from pydantic import BaseModel
 from typing import Optional, List
 import json
@@ -17,6 +17,7 @@ from app.core.security import get_current_user
 from app.models.user import User
 from app.models.page import Page, PageStatus
 from app.models.space import Space
+from app.models.ai_chat_message import AIChatMessage
 from app.services.agent import (
     chat_with_agent,
     summarize_page_content,
@@ -30,6 +31,7 @@ from app.services.agent import (
     clear_uploaded_document,
     generate_created_page_content,
 )
+from app.services.embedding import semantic_search_page_chunks
 from app.services.document_processor import get_document_processor
 from slugify import slugify
 
@@ -52,6 +54,14 @@ class ChatResponse(BaseModel):
     page_created: bool = False
     created_page_id: Optional[int] = None
     created_page_slug: Optional[str] = None
+
+
+class ChatHistoryMessage(BaseModel):
+    id: int
+    role: str
+    content: str
+    tool_calls: List[dict] = []
+    timestamp: str
 
 
 class DocumentUploadResponse(BaseModel):
@@ -213,13 +223,74 @@ async def chat(
         page = page_result.scalar_one_or_none()
 
         if page:
-            message = f"""[Current page context]
+            # Use RAG over the page's vector index rather than injecting full page content.
+            # Pages are indexed when published. If a page is not published, we won't have
+            # reliable retrieval context.
+            if page.status != PageStatus.PUBLISHED:
+                message = f"""[Current page context]
 Page ID: {page.id}
 Page Title: "{page.title}"
 Space ID: {page.space_id}
 Status: {page.status}
 
-User is currently viewing this page and asked: {message}"""
+The user is asking about the current page, but this page is not published yet.
+
+Tell the user to publish the page first so it gets indexed, then ask the question again.
+
+User question: {request.message}"""
+            else:
+                retrieved = await semantic_search_page_chunks(
+                    query=request.message,
+                    page_id=page.id,
+                    limit=6,
+                )
+
+                # DEBUG: log retrieval hits so we can diagnose mismatched page_id/types
+                try:
+                    import logging
+
+                    logger = logging.getLogger(__name__)
+                    logger.info(
+                        f"AI page-RAG retrieved_chunks={len(retrieved)} page_id={page.id} session_id={request.session_id}"
+                    )
+                except Exception:
+                    pass
+
+                if not retrieved:
+                    message = f"""[Current page context]
+Page ID: {page.id}
+Page Title: "{page.title}"
+Space ID: {page.space_id}
+Status: {page.status}
+
+The user is asking about the current page, but I couldn't retrieve any indexed context for it.
+
+                    Ask the user to reindex published pages (Admin → Semantic Search → Reindex All Pages) or republish this page, then retry.
+
+User question: {request.message}"""
+                else:
+                    # Keep retrieved context compact to reduce token usage.
+                    context_blocks = []
+                    for r in retrieved:
+                        chunk_index = r.get("chunk_index")
+                        score = r.get("score")
+                        chunk_text = r.get("chunk_text", "")
+                        context_blocks.append(
+                            f"[Chunk {chunk_index} | score={score:.2f}]\n{chunk_text}" if isinstance(score, (int, float)) else f"[Chunk {chunk_index}]\n{chunk_text}"
+                        )
+
+                    context_text = "\n\n---\n\n".join(context_blocks)
+
+                    message = f"""[Current page context]
+Page ID: {page.id}
+Page Title: "{page.title}"
+Space ID: {page.space_id}
+Status: {page.status}
+
+[Retrieved context from this page (RAG)]
+{context_text}
+
+User question: {request.message}"""
         else:
             message = f"[Current page ID: {request.page_id}]\n\n{message}"
     
@@ -323,6 +394,41 @@ User message: {message}"""
         except Exception as e:
             result["response"] = f"Failed to create page: {str(e)}"
     
+    # Persist chat history (per-user + per-session + optional page context)
+    try:
+        user_msg = AIChatMessage(
+            user_id=current_user.id,
+            session_id=request.session_id or "global",
+            page_id=request.page_id,
+            space_id=request.space_id,
+            role="user",
+            content=request.message,
+            tool_calls=[],
+            meta=None,
+        )
+        assistant_msg = AIChatMessage(
+            user_id=current_user.id,
+            session_id=request.session_id or "global",
+            page_id=request.page_id,
+            space_id=request.space_id,
+            role="assistant",
+            content=result.get("response", ""),
+            tool_calls=result.get("tool_calls", []) or [],
+            meta={
+                "page_edited": page_edited,
+                "edited_page_id": edited_page_id,
+                "page_created": page_created,
+                "created_page_id": created_page_id,
+                "created_page_slug": created_page_slug,
+            },
+        )
+        db.add(user_msg)
+        db.add(assistant_msg)
+        await db.commit()
+    except Exception:
+        # Don't fail the chat request if history persistence fails.
+        await db.rollback()
+
     return ChatResponse(
         response=result["response"],
         tool_calls=result["tool_calls"],
@@ -332,6 +438,40 @@ User message: {message}"""
         created_page_id=created_page_id,
         created_page_slug=created_page_slug,
     )
+
+
+@router.get("/history", response_model=List[ChatHistoryMessage])
+async def get_chat_history(
+    session_id: str = Query(default="global"),
+    page_id: Optional[int] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Fetch persisted chat history for the current user."""
+    stmt = (
+        select(AIChatMessage)
+        .where(
+            AIChatMessage.user_id == current_user.id,
+            AIChatMessage.session_id == session_id,
+        )
+        .order_by(AIChatMessage.created_at.asc(), AIChatMessage.id.asc())
+    )
+    if page_id is not None:
+        stmt = stmt.where(AIChatMessage.page_id == page_id)
+
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+
+    return [
+        ChatHistoryMessage(
+            id=row.id,
+            role=row.role,
+            content=row.content,
+            tool_calls=row.tool_calls or [],
+            timestamp=row.created_at.isoformat(),
+        )
+        for row in rows
+    ]
 
 
 @router.post("/summarize", response_model=SummarizeResponse)
@@ -386,13 +526,29 @@ async def summarize_page(
 @router.post("/clear-session")
 async def clear_chat_session(
     session_id: str = Query(default="default"),
+    page_id: Optional[int] = Query(default=None),
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Clear the chat session memory.
     """
     user_session_id = f"{current_user.id}_{session_id}"
     clear_session(user_session_id)
+
+    # Also clear persisted history for this session
+    try:
+        stmt = delete(AIChatMessage).where(
+            AIChatMessage.user_id == current_user.id,
+            AIChatMessage.session_id == session_id,
+        )
+        if page_id is not None:
+            stmt = stmt.where(AIChatMessage.page_id == page_id)
+        await db.execute(stmt)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+
     return {"status": "ok", "message": "Session cleared"}
 
 

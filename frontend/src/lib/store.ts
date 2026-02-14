@@ -100,6 +100,7 @@ interface AIState {
   setAISidebarOpen: (open: boolean) => void;
   // Messages
   messages: AIMessage[];
+  setMessages: (messages: AIMessage[]) => void;
   addMessage: (message: AIMessage) => void;
   clearMessages: () => void;
   currentDraftMessageId: string | null;
@@ -119,6 +120,7 @@ export const useAIStore = create<AIState>((set) => ({
   aiSidebarOpen: false,
   setAISidebarOpen: (open) => set({ aiSidebarOpen: open }),
   messages: [],
+  setMessages: (messages) => set({ messages }),
   addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
   clearMessages: () => set({ messages: [] }),
   currentDraftMessageId: null,
@@ -126,12 +128,20 @@ export const useAIStore = create<AIState>((set) => ({
   aiEnabled: true, // Will be updated when AI status is fetched
   setAIEnabled: (enabled) => set({ aiEnabled: enabled }),
   pageContext: null,
-  setPageContext: (context) => set({
-    pageContext: context,
-    // Clear messages when switching pages to remove old drafts
-    messages: [],
-    currentDraftMessageId: null,
-  }),
+  setPageContext: (context) =>
+    set((state) => {
+      const prevPageId = state.pageContext?.pageId ?? null;
+      const nextPageId = context?.pageId ?? null;
+      const isPageSwitch = prevPageId !== nextPageId;
+
+      return {
+        pageContext: context,
+        // Only clear messages/drafts when switching pages (or leaving a page).
+        // This prevents chat from being wiped on autosave/title changes.
+        messages: isPageSwitch ? [] : state.messages,
+        currentDraftMessageId: isPageSwitch ? null : state.currentDraftMessageId,
+      };
+    }),
   pageReloadTrigger: 0,
   triggerPageReload: () => set((state) => ({ pageReloadTrigger: state.pageReloadTrigger + 1 })),
 }));

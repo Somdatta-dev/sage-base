@@ -44,6 +44,7 @@ interface AttachedDocument {
 export function AISidebar() {
   const {
     messages,
+    setMessages,
     addMessage,
     clearMessages,
     aiEnabled,
@@ -62,6 +63,55 @@ export function AISidebar() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Use a page-scoped session id so AI memory/drafts don't leak across pages.
+  // When not on a page, fall back to a global session.
+  const sessionId = pageContext ? `page_${pageContext.pageId}` : "global";
+
+  // Load persisted chat history when the page context/session changes.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHistory = async () => {
+      if (!aiEnabled) return;
+
+      try {
+        const history = await aiApi.getHistory(sessionId, pageContext?.pageId);
+        if (cancelled) return;
+
+        const mapped: Message[] = history.map((m) => ({
+          id: String(m.id),
+          role: m.role,
+          content: m.content,
+          toolCalls: m.tool_calls,
+          timestamp: new Date(m.timestamp),
+        }));
+
+        setMessages(mapped);
+
+        // Restore the most recent draft card (if any) for this page session.
+        const lastDraft = [...mapped]
+          .reverse()
+          .find(
+            (msg) =>
+              msg.role === "assistant" &&
+              !!msg.toolCalls?.some(
+                (tc) => tc.name === "draft_content" && typeof tc.args?.content === "string"
+              )
+          );
+
+        setCurrentDraftMessageId(lastDraft ? lastDraft.id : null);
+      } catch {
+        // If history fetch fails, keep current in-memory chat.
+      }
+    };
+
+    loadHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [aiEnabled, pageContext?.pageId, sessionId, setMessages, setCurrentDraftMessageId]);
 
   useEffect(() => {
     if (aiSidebarOpen && inputRef.current) {
@@ -143,7 +193,8 @@ export function AISidebar() {
         currentInput,
         pageContext?.spaceId,
         pageContext?.pageId,
-        currentDocId
+        currentDocId,
+        sessionId
       );
 
       const assistantMessage: Message = {
@@ -261,7 +312,7 @@ export function AISidebar() {
     clearMessages();
     setCurrentDraftMessageId(null);
     try {
-      await aiApi.clearSession();
+      await aiApi.clearSession(sessionId, pageContext?.pageId);
     } catch {
       // Ignore errors
     }

@@ -12,7 +12,7 @@ from app.models.user import User
 from app.models.space import Space
 from app.models.page import Page, PageStatus
 from app.schemas.page import PageResponse
-from app.services.embedding import semantic_search, get_collection_info, index_page
+from app.services.embedding import semantic_search, get_collection_info, update_page_embedding
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -209,24 +209,32 @@ async def reset_qdrant_collection(
     Delete the Qdrant collection and all indexed data.
     Admin only. Use reindex after this to rebuild.
     """
-    from app.services.embedding import get_async_qdrant_client, COLLECTION_NAME
+    from app.services.embedding import get_async_qdrant_client, COLLECTION_NAME, CHUNKS_COLLECTION_NAME
 
     try:
         client = await get_async_qdrant_client()
         collections = await client.get_collections()
         collection_names = [c.name for c in collections.collections]
 
-        if COLLECTION_NAME not in collection_names:
+        deleted = []
+        if COLLECTION_NAME in collection_names:
+            await client.delete_collection(COLLECTION_NAME)
+            deleted.append(COLLECTION_NAME)
+
+        if CHUNKS_COLLECTION_NAME in collection_names:
+            await client.delete_collection(CHUNKS_COLLECTION_NAME)
+            deleted.append(CHUNKS_COLLECTION_NAME)
+
+        if not deleted:
             return ResetQdrantResponse(
                 success=True,
-                message=f"Collection '{COLLECTION_NAME}' does not exist. Nothing to reset.",
+                message=f"Collections '{COLLECTION_NAME}' and '{CHUNKS_COLLECTION_NAME}' do not exist. Nothing to reset.",
             )
 
-        await client.delete_collection(COLLECTION_NAME)
-        logger.info(f"Qdrant collection '{COLLECTION_NAME}' deleted by {current_user.email}")
+        logger.info(f"Qdrant collections {deleted} deleted by {current_user.email}")
         return ResetQdrantResponse(
             success=True,
-            message=f"Collection '{COLLECTION_NAME}' deleted successfully. Use 'Reindex All Pages' to rebuild.",
+            message=f"Deleted: {', '.join(deleted)}. Use 'Reindex All Pages' to rebuild.",
         )
     except Exception as e:
         logger.error(f"Failed to reset Qdrant: {e}")
@@ -276,11 +284,14 @@ async def reindex_all_pages(
     
     for page in pages:
         try:
-            await index_page(
+            # update_page_embedding now indexes both:
+            # - page-level vector (global search)
+            # - chunk-level vectors (per-page RAG)
+            await update_page_embedding(
                 page_id=page.id,
                 title=page.title,
                 content_text=page.content_text or "",
-                space_id=page.space_id
+                space_id=page.space_id,
             )
             indexed_count += 1
             logger.info(f"Indexed page {page.id}: {page.title}")
