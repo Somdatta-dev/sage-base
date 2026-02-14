@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import type { Components } from "react-markdown";
 import {
   Send,
   Sparkles,
@@ -19,9 +21,95 @@ import {
   FileUp,
   Plus,
   Check,
+  Copy,
 } from "lucide-react";
 import { useAIStore } from "@/lib/store";
 import { aiApi, pagesApi } from "@/lib/api";
+
+/* ── Copy button for code blocks ─────────────────────────── */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [text]);
+
+  return (
+    <button
+      onClick={handleCopy}
+      className={`ai-code-copy ${copied ? "copied" : ""}`}
+      aria-label="Copy code"
+    >
+      {copied ? (
+        <>
+          <Check className="w-3 h-3" /> Copied
+        </>
+      ) : (
+        <>
+          <Copy className="w-3 h-3" /> Copy
+        </>
+      )}
+    </button>
+  );
+}
+
+/* ── Custom ReactMarkdown components for polished rendering ── */
+const markdownComponents: Components = {
+  // Code blocks with language label + copy button
+  pre({ children }) {
+    return <>{children}</>;
+  },
+  code({ className, children, ...props }) {
+    const match = /language-(\w+)/.exec(className || "");
+    const isBlock =
+      typeof children === "string"
+        ? children.includes("\n")
+        : Array.isArray(children)
+          ? true
+          : false;
+
+    // If it has a language class or is multiline, render as a code block
+    if (match || isBlock) {
+      const language = match ? match[1] : "text";
+      const codeString = String(children).replace(/\n$/, "");
+
+      return (
+        <div className="ai-code-block">
+          <div className="ai-code-header">
+            <span className="ai-code-lang">{language}</span>
+            <CopyButton text={codeString} />
+          </div>
+          <pre>
+            <code className={className} {...props}>
+              {children}
+            </code>
+          </pre>
+        </div>
+      );
+    }
+
+    // Inline code
+    return (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  },
+};
 
 interface Message {
   id: string;
@@ -567,8 +655,12 @@ export function AISidebar() {
                                     </button>
                                   )}
                                 </div>
-                                <div className="p-3 max-h-60 overflow-y-auto text-xs prose prose-invert prose-sm">
-                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                <div className="p-3 max-h-60 overflow-y-auto ai-markdown text-xs">
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    rehypePlugins={[rehypeHighlight]}
+                                    components={markdownComponents}
+                                  >
                                     {content}
                                   </ReactMarkdown>
                                 </div>
@@ -585,8 +677,12 @@ export function AISidebar() {
                           )}
                           {message.role === "assistant" ? (
                             (message.content !== "DRAFT_GENERATED") && (
-                              <div className="text-sm prose prose-sm prose-invert max-w-none prose-p:my-2 prose-p:leading-relaxed prose-headings:mt-4 prose-headings:mb-2 prose-headings:font-semibold prose-h2:text-base prose-h3:text-sm prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-code:bg-[#373737] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-purple-300 prose-code:text-xs prose-pre:bg-[#1a1a1a] prose-pre:border prose-pre:border-[#373737] prose-pre:rounded-lg prose-strong:text-purple-300 prose-strong:font-semibold first:prose-headings:mt-0">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              <div className="ai-markdown">
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  rehypePlugins={[rehypeHighlight]}
+                                  components={markdownComponents}
+                                >
                                   {message.content}
                                 </ReactMarkdown>
                               </div>
