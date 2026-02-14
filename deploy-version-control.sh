@@ -4,14 +4,28 @@
 
 echo "🚀 Deploying Version Control Feature..."
 
+# Safety switch:
+# - By default, this script PRESERVES persistent data volumes.
+# - To intentionally wipe Postgres/Qdrant data (dev only), set:
+#     SAGEBASE_RESET_DATA=1
+#
+# Example:
+#   SAGEBASE_RESET_DATA=1 bash deploy-version-control.sh
+
+RESET_DATA=${SAGEBASE_RESET_DATA:-0}
+
 # Stop and remove existing containers
 echo "📦 Stopping existing containers..."
 docker-compose down
 
-# Remove old volumes (since you're okay with data loss in dev)
-echo "🗑️  Removing old data volumes..."
-docker volume rm sage-base-v001_postgres_data 2>/dev/null || true
-docker volume rm sage-base-v001_qdrant_data 2>/dev/null || true
+# Remove old volumes ONLY when explicitly requested
+if [ "$RESET_DATA" = "1" ]; then
+  echo "🗑️  SAGEBASE_RESET_DATA=1 → Removing old data volumes (THIS WILL DELETE ALL DATA)..."
+  docker volume rm sage-base-v001_postgres_data 2>/dev/null || true
+  docker volume rm sage-base-v001_qdrant_data 2>/dev/null || true
+else
+  echo "🔒 Preserving existing data volumes (set SAGEBASE_RESET_DATA=1 to wipe volumes)"
+fi
 
 # Rebuild the application container with new dependencies
 echo "🔨 Rebuilding application container..."
