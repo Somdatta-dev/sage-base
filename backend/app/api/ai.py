@@ -223,10 +223,42 @@ async def chat(
         page = page_result.scalar_one_or_none()
 
         if page:
+            def _needs_current_page_context(user_text: str) -> bool:
+                """Heuristic: only gate on publishing/indexing if the user is asking about
+                the *current page content* (e.g. sections, code blocks, 'this page').
+
+                Content creation (drafting a report/article) should NOT be blocked by
+                whether the current page is indexed.
+                """
+                t = (user_text or "").strip().lower()
+                if not t:
+                    return False
+
+                # Signals the user is referring to the currently open page.
+                page_ref_signals = [
+                    "this page",
+                    "current page",
+                    "on this page",
+                    "in this page",
+                    "section",
+                    "code block",
+                    "the code",
+                    "above",
+                    "below",
+                    "in section",
+                    "from section",
+                    "explain",
+                    "summarize",
+                ]
+                if any(s in t for s in page_ref_signals):
+                    return True
+
+                return False
+
             # Use RAG over the page's vector index rather than injecting full page content.
             # Pages are indexed when published. If a page is not published, we won't have
             # reliable retrieval context.
-            if page.status != PageStatus.PUBLISHED:
+            if page.status != PageStatus.PUBLISHED and _needs_current_page_context(request.message):
                 message = f"""[Current page context]
 Page ID: {page.id}
 Page Title: "{page.title}"
@@ -238,7 +270,7 @@ The user is asking about the current page, but this page is not published yet.
 Tell the user to publish the page first so it gets indexed, then ask the question again.
 
 User question: {request.message}"""
-            else:
+            elif page.status == PageStatus.PUBLISHED:
                 retrieved = await semantic_search_page_chunks(
                     query=request.message,
                     page_id=page.id,
@@ -265,7 +297,7 @@ Status: {page.status}
 
 The user is asking about the current page, but I couldn't retrieve any indexed context for it.
 
-                    Ask the user to reindex published pages (Admin → Semantic Search → Reindex All Pages) or republish this page, then retry.
+Ask the user to reindex published pages (Admin → Semantic Search → Reindex All Pages) or republish this page, then retry.
 
 User question: {request.message}"""
                 else:
@@ -291,6 +323,16 @@ Status: {page.status}
 {context_text}
 
 User question: {request.message}"""
+            else:
+                # Page is not published, but the user is NOT asking about the page content.
+                # Do not block drafting/report creation/web search/etc.
+                message = f"""[Current page context]
+Page ID: {page.id}
+Page Title: "{page.title}"
+Space ID: {page.space_id}
+Status: {page.status}
+
+User message: {request.message}"""
         else:
             message = f"[Current page ID: {request.page_id}]\n\n{message}"
     
