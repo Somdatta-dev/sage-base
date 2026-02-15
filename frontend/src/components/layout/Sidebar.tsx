@@ -173,6 +173,7 @@ export function Sidebar() {
   };
 
   const isAdmin = user?.role === "admin";
+  const isViewer = user?.role === "viewer";
 
   if (sidebarCollapsed) {
     return (
@@ -266,13 +267,15 @@ export function Sidebar() {
             <span className="text-xs font-medium text-[#6b6b6b] uppercase tracking-wider">
               Spaces
             </span>
-            <button
-              onClick={() => setCreateSpaceOpen(true)}
-              className="p-0.5 hover:bg-[#2d2d2d] rounded transition-colors"
-              title="Create Space"
-            >
-              <Plus className="w-3.5 h-3.5 text-[#6b6b6b]" />
-            </button>
+            {!isViewer && (
+              <button
+                onClick={() => setCreateSpaceOpen(true)}
+                className="p-0.5 hover:bg-[#2d2d2d] rounded transition-colors"
+                title="Create Space"
+              >
+                <Plus className="w-3.5 h-3.5 text-[#6b6b6b]" />
+              </button>
+            )}
           </div>
 
           <div className="space-y-0.5">
@@ -375,6 +378,7 @@ export function Sidebar() {
           onDelete={handleDelete}
           onDuplicate={handleDuplicate}
           onOpenInNewTab={handleOpenInNewTab}
+          isViewer={isViewer}
         />
       )}
     </aside>

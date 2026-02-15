@@ -7,7 +7,7 @@ from slugify import slugify
 from datetime import datetime
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_write_access
 from app.models.user import User
 from app.models.space import Space
 from app.models.page import Page, PageVersion, PageStatus, PageUpdateRequest, EditMode, UpdateRequestStatus
@@ -138,7 +138,7 @@ async def get_page_tree(
 async def create_page(
     page_data: PageCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     # Verify space exists
     space_result = await db.execute(select(Space).where(Space.id == page_data.space_id))
@@ -232,7 +232,7 @@ async def update_page(
     page_id: int,
     page_data: PageUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Update page draft content (does NOT create version or update vector store).
@@ -304,7 +304,7 @@ async def move_page(
     page_id: int,
     move_data: PageMoveRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     result = await db.execute(select(Page).where(Page.id == page_id))
     page = result.scalar_one_or_none()
@@ -325,7 +325,7 @@ async def move_page(
 async def delete_page(
     page_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     result = await db.execute(select(Page).where(Page.id == page_id))
     page = result.scalar_one_or_none()
@@ -387,7 +387,7 @@ async def publish_page(
     page_id: int,
     publish_data: PagePublishRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Publish a page: creates version, updates vector store, changes status to published.
@@ -463,7 +463,7 @@ async def _update_embedding_background(page_id: int, title: str, content_text: s
 async def unpublish_page(
     page_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Unpublish a page (change status to draft). Does NOT create version.
@@ -498,7 +498,7 @@ async def update_page_settings(
     page_id: int,
     settings: PageSettingsUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Update page settings (edit mode). Only page owner or admin can change.
@@ -576,7 +576,7 @@ async def create_update_request(
     page_id: int,
     request_data: UpdateRequestCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Create an update request for a page that requires approval.
@@ -654,7 +654,7 @@ async def approve_update_request(
     request_id: int,
     review: UpdateRequestReview,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Approve an update request and apply changes (auto-publish).
@@ -766,7 +766,7 @@ async def reject_update_request(
     request_id: int,
     review: UpdateRequestReview,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Reject an update request.
@@ -813,7 +813,7 @@ async def append_page_content(
     page_id: int,
     request: AppendContentRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Append markdown content to a page.

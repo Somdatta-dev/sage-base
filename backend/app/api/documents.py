@@ -11,7 +11,7 @@ from typing import Optional, List
 import os
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_write_access
 from app.models.user import User
 from app.models.page import Page, PageStatus
 from app.models.space import Space
@@ -45,7 +45,7 @@ class DocumentToPageResponse(BaseModel):
 @router.post("/process", response_model=DocumentProcessResponse)
 async def process_document(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Process an uploaded document and return its content.
@@ -89,7 +89,7 @@ async def document_to_page(
     space_id: int = Form(...),
     title: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Convert an uploaded document to a new page in a space.

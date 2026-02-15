@@ -4,7 +4,7 @@ from sqlalchemy import select
 from typing import List
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_write_access
 from app.models.user import User
 from app.models.space import Space
 from app.schemas.space import SpaceCreate, SpaceUpdate, SpaceResponse
@@ -32,7 +32,7 @@ async def list_spaces(
 async def create_space(
     space_data: SpaceCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     # Check if key already exists
     result = await db.execute(select(Space).where(Space.key == space_data.key.upper()))
@@ -98,7 +98,7 @@ async def update_space(
     space_id: int,
     space_data: SpaceUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     result = await db.execute(select(Space).where(Space.id == space_id))
     space = result.scalar_one_or_none()
@@ -123,7 +123,7 @@ async def update_space(
 async def delete_space(
     space_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     result = await db.execute(select(Space).where(Space.id == space_id))
     space = result.scalar_one_or_none()

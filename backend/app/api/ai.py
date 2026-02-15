@@ -13,7 +13,7 @@ import uuid
 import os
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_write_access
 from app.models.user import User
 from app.models.page import Page, PageStatus
 from app.models.space import Space
@@ -130,7 +130,7 @@ SUPPORTED_DOC_EXTENSIONS = {'.pdf', '.docx', '.pptx', '.xlsx', '.html', '.md', '
 @router.post("/upload-document", response_model=DocumentUploadResponse)
 async def upload_document_for_chat(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Upload a document for AI chat context.
@@ -189,7 +189,7 @@ async def upload_document_for_chat(
 async def chat(
     request: ChatRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Send a message to the AI agent and get a response.
@@ -597,7 +597,7 @@ async def clear_chat_session(
 @router.post("/edit-text", response_model=EditTextResponse)
 async def edit_text(
     request: EditTextRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     """
     Edit text based on an instruction using AI.

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Plus, FileText, Settings, MoreHorizontal, Loader2 } from "lucide-react";
 import { spacesApi, pagesApi } from "@/lib/api";
-import { useSpaceStore, useAIStore } from "@/lib/store";
+import { useSpaceStore, useAIStore, useAuthStore } from "@/lib/store";
 import type { Space, PageTreeItem } from "@/types";
 import { PageTree } from "@/components/pages/PageTree";
 import { CreatePageModal } from "@/components/pages/CreatePageModal";
@@ -15,9 +15,11 @@ export default function SpacePage() {
   const router = useRouter();
   const { setCurrentSpace, setPageTree, pageTree } = useSpaceStore();
   const { setPageContext } = useAIStore();
+  const { user } = useAuthStore();
   const [space, setSpace] = useState<Space | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreatePage, setShowCreatePage] = useState(false);
+  const isViewer = user?.role === "viewer";
 
   // Clear AI page context when navigating to space overview
   useEffect(() => {
@@ -75,15 +77,17 @@ export default function SpacePage() {
           </div>
         </div>
 
-        <div className="p-3">
-          <button
-            onClick={() => setShowCreatePage(true)}
-            className="w-full flex items-center gap-2 px-3 py-2 bg-sage-600 hover:bg-sage-500 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New Page
-          </button>
-        </div>
+        {!isViewer && (
+          <div className="p-3">
+            <button
+              onClick={() => setShowCreatePage(true)}
+              className="w-full flex items-center gap-2 px-3 py-2 bg-sage-600 hover:bg-sage-500 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              New Page
+            </button>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-2">
           <PageTree items={pageTree} spaceKey={space.key} />
@@ -130,12 +134,14 @@ export default function SpacePage() {
               <div className="bg-white/5 border border-white/10 border-dashed rounded-xl p-8 text-center">
                 <FileText className="w-12 h-12 text-gray-600 mx-auto mb-3" />
                 <p className="text-gray-400 mb-4">No pages in this space yet</p>
-                <button
-                  onClick={() => setShowCreatePage(true)}
-                  className="px-4 py-2 bg-sage-600 hover:bg-sage-500 text-white text-sm rounded-lg transition-colors"
-                >
-                  Create your first page
-                </button>
+                {!isViewer && (
+                  <button
+                    onClick={() => setShowCreatePage(true)}
+                    className="px-4 py-2 bg-sage-600 hover:bg-sage-500 text-white text-sm rounded-lg transition-colors"
+                  >
+                    Create your first page
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-2">

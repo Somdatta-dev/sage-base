@@ -116,15 +116,18 @@ export default function PageViewPage() {
     }
   }, [page]);
 
+  const isViewer = user?.role === "viewer";
   const isPageOwner = user && page && page.author_id === user.id;
   const isSpaceOwner = user && space && space.owner_id === user.id;
   const isPrivileged = isPageOwner || isSpaceOwner || (user && user.role === "admin");
   // Everyone can edit, but only privileged users can save directly to the page
+  // Viewers are read-only — they cannot edit at all
   const canSaveDirectly =
+    !isViewer &&
     user &&
     (isPrivileged || page?.edit_mode === "anyone");
   // Whether the current user needs to go through approval to publish
-  const needsApproval = !isPrivileged && page?.edit_mode === "approval";
+  const needsApproval = !isViewer && !isPrivileged && page?.edit_mode === "approval";
 
   const handleContentChange = useCallback(
     (newContent: Record<string, unknown>) => {
@@ -281,69 +284,77 @@ export default function PageViewPage() {
             </span>
           )}
 
-          {needsApproval ? (
-            <span className="text-xs text-orange-400/80 px-2">
-              Editing locally
+          {isViewer ? (
+            <span className="text-xs px-2 py-1 bg-[#373737] text-[#9b9b9b] rounded">
+              Read Only
             </span>
-          ) : saving ? (
-            <span className="text-xs text-[#9b9b9b] flex items-center gap-1.5 px-2">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Saving...
-            </span>
-          ) : saved ? (
-            <span className="text-xs text-[#66bb6a] flex items-center gap-1.5 px-2">
-              <Check className="w-3.5 h-3.5" />
-              Saved
-            </span>
-          ) : null}
+          ) : (
+            <>
+              {needsApproval ? (
+                <span className="text-xs text-orange-400/80 px-2">
+                  Editing locally
+                </span>
+              ) : saving ? (
+                <span className="text-xs text-[#9b9b9b] flex items-center gap-1.5 px-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Saving...
+                </span>
+              ) : saved ? (
+                <span className="text-xs text-[#66bb6a] flex items-center gap-1.5 px-2">
+                  <Check className="w-3.5 h-3.5" />
+                  Saved
+                </span>
+              ) : null}
 
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded transition-colors ${isEditing
-              ? "bg-[#2383e2] text-white"
-              : "bg-[#2d2d2d] text-[#9b9b9b] hover:bg-[#373737]"
-              }`}
-          >
-            {isEditing ? (
-              <>
-                <Eye className="w-3.5 h-3.5" />
-                Preview
-              </>
-            ) : (
-              <>
-                <Edit2 className="w-3.5 h-3.5" />
-                Edit
-              </>
-            )}
-          </button>
+              <button
+                onClick={() => setIsEditing(!isEditing)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded transition-colors ${isEditing
+                  ? "bg-[#2383e2] text-white"
+                  : "bg-[#2d2d2d] text-[#9b9b9b] hover:bg-[#373737]"
+                  }`}
+              >
+                {isEditing ? (
+                  <>
+                    <Eye className="w-3.5 h-3.5" />
+                    Preview
+                  </>
+                ) : (
+                  <>
+                    <Edit2 className="w-3.5 h-3.5" />
+                    Edit
+                  </>
+                )}
+              </button>
 
-          {/* Publish Button */}
-          <PublishButton
-            pageId={page.id}
-            status={page.status}
-            onPublish={handleRefresh}
-            needsApproval={!!needsApproval}
-            onRequestApproval={() => setShowUpdateRequest(true)}
-          />
+              {/* Publish Button */}
+              <PublishButton
+                pageId={page.id}
+                status={page.status}
+                onPublish={handleRefresh}
+                needsApproval={!!needsApproval}
+                onRequestApproval={() => setShowUpdateRequest(true)}
+              />
 
-          {/* Page Settings (owner only) */}
-          {isPageOwner && (
-            <PageSettingsModal
-              pageId={page.id}
-              currentEditMode={page.edit_mode}
-              onUpdate={handleRefresh}
-            />
-          )}
+              {/* Page Settings (owner only) */}
+              {isPageOwner && (
+                <PageSettingsModal
+                  pageId={page.id}
+                  currentEditMode={page.edit_mode}
+                  onUpdate={handleRefresh}
+                />
+              )}
 
-          {canSaveDirectly && (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#2383e2] hover:bg-[#1a6fc2] text-white rounded transition-colors disabled:opacity-50"
-            >
-              <Save className="w-3.5 h-3.5" />
-              Save
-            </button>
+              {canSaveDirectly && (
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#2383e2] hover:bg-[#1a6fc2] text-white rounded transition-colors disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  Save
+                </button>
+              )}
+            </>
           )}
 
           <div className="relative">
@@ -371,16 +382,18 @@ export default function PageViewPage() {
                     <History className="w-4 h-4" />
                     Version History
                   </button>
-                  <button
-                    onClick={() => {
-                      handleDelete();
-                      setShowMenu(false);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[#eb5757] hover:bg-[#2d2d2d] transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete Page
-                  </button>
+                  {!isViewer && (
+                    <button
+                      onClick={() => {
+                        handleDelete();
+                        setShowMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[#eb5757] hover:bg-[#2d2d2d] transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete Page
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -431,7 +444,7 @@ export default function PageViewPage() {
         </AnimatePresence>
 
         <div className="max-w-3xl mx-auto px-12 py-12">
-          {isEditing ? (
+          {isEditing && !isViewer ? (
             <>
               <input
                 type="text"

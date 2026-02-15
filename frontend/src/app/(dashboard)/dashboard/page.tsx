@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, FolderOpen, FileText, Clock, TrendingUp } from "lucide-react";
 import { useSpaceStore, useAuthStore, useAIStore } from "@/lib/store";
+
 import { spacesApi } from "@/lib/api";
 import { pagesApi } from "@/lib/api";
 import type { Page } from "@/types";
@@ -16,6 +17,7 @@ export default function DashboardPage() {
   const { setPageContext } = useAIStore();
   const [recentPages, setRecentPages] = useState<Page[]>([]);
   const [showCreateSpace, setShowCreateSpace] = useState(false);
+  const isViewer = user?.role === "viewer";
 
   // Clear AI page context when navigating to dashboard
   useEffect(() => {
@@ -119,13 +121,15 @@ export default function DashboardPage() {
               <FolderOpen className="w-5 h-5 text-sage-400" />
               Your Spaces
             </h2>
-            <button
-              onClick={() => setShowCreateSpace(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-sage-600 hover:bg-sage-500 text-white rounded-lg transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              New Space
-            </button>
+            {!isViewer && (
+              <button
+                onClick={() => setShowCreateSpace(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-sage-600 hover:bg-sage-500 text-white rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                New Space
+              </button>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -133,12 +137,14 @@ export default function DashboardPage() {
               <div className="bg-white/5 border border-white/10 border-dashed rounded-xl p-8 text-center">
                 <FolderOpen className="w-12 h-12 text-gray-600 mx-auto mb-3" />
                 <p className="text-gray-400 mb-4">No spaces yet</p>
-                <button
-                  onClick={() => setShowCreateSpace(true)}
-                  className="px-4 py-2 bg-sage-600 hover:bg-sage-500 text-white text-sm rounded-lg transition-colors"
-                >
-                  Create your first space
-                </button>
+                {!isViewer && (
+                  <button
+                    onClick={() => setShowCreateSpace(true)}
+                    className="px-4 py-2 bg-sage-600 hover:bg-sage-500 text-white text-sm rounded-lg transition-colors"
+                  >
+                    Create your first space
+                  </button>
+                )}
               </div>
             ) : (
               spaces.slice(0, 5).map((space) => (

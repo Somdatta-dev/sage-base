@@ -29,6 +29,7 @@ interface SidebarContextMenuProps {
   onDelete?: (target: ContextTarget) => void;
   onDuplicate?: (target: ContextTarget) => void;
   onOpenInNewTab?: (target: ContextTarget) => void;
+  isViewer?: boolean;
 }
 
 interface MenuItem {
@@ -49,6 +50,7 @@ export function SidebarContextMenu({
   onDelete,
   onDuplicate,
   onOpenInNewTab,
+  isViewer,
 }: SidebarContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -81,30 +83,34 @@ export function SidebarContextMenu({
 
   if (target.type === "sidebar") {
     // Right-click on empty sidebar area
-    menuItems.push({
-      label: "New Space",
-      icon: <FolderPlus className="w-4 h-4" />,
-      action: () => { onCreateSpace?.(); onClose(); },
-    });
+    if (!isViewer) {
+      menuItems.push({
+        label: "New Space",
+        icon: <FolderPlus className="w-4 h-4" />,
+        action: () => { onCreateSpace?.(); onClose(); },
+      });
+    }
   } else if (target.type === "space") {
     // Right-click on a space
-    menuItems.push({
-      label: "New Page",
-      icon: <FilePlus className="w-4 h-4" />,
-      action: () => { onCreatePage?.(target.spaceKey); onClose(); },
-    });
-    menuItems.push({
-      label: "Rename Space",
-      icon: <Pencil className="w-4 h-4" />,
-      action: () => { onRename?.(target); onClose(); },
-      divider: true,
-    });
-    menuItems.push({
-      label: "Delete Space",
-      icon: <Trash2 className="w-4 h-4" />,
-      action: () => { onDelete?.(target); onClose(); },
-      danger: true,
-    });
+    if (!isViewer) {
+      menuItems.push({
+        label: "New Page",
+        icon: <FilePlus className="w-4 h-4" />,
+        action: () => { onCreatePage?.(target.spaceKey); onClose(); },
+      });
+      menuItems.push({
+        label: "Rename Space",
+        icon: <Pencil className="w-4 h-4" />,
+        action: () => { onRename?.(target); onClose(); },
+        divider: true,
+      });
+      menuItems.push({
+        label: "Delete Space",
+        icon: <Trash2 className="w-4 h-4" />,
+        action: () => { onDelete?.(target); onClose(); },
+        danger: true,
+      });
+    }
   } else if (target.type === "page") {
     // Right-click on a page
     menuItems.push({
@@ -112,23 +118,25 @@ export function SidebarContextMenu({
       icon: <ExternalLink className="w-4 h-4" />,
       action: () => { onOpenInNewTab?.(target); onClose(); },
     });
-    menuItems.push({
-      label: "Duplicate Page",
-      icon: <Copy className="w-4 h-4" />,
-      action: () => { onDuplicate?.(target); onClose(); },
-    });
-    menuItems.push({
-      label: "Rename Page",
-      icon: <Pencil className="w-4 h-4" />,
-      action: () => { onRename?.(target); onClose(); },
-      divider: true,
-    });
-    menuItems.push({
-      label: "Delete Page",
-      icon: <Trash2 className="w-4 h-4" />,
-      action: () => { onDelete?.(target); onClose(); },
-      danger: true,
-    });
+    if (!isViewer) {
+      menuItems.push({
+        label: "Duplicate Page",
+        icon: <Copy className="w-4 h-4" />,
+        action: () => { onDuplicate?.(target); onClose(); },
+      });
+      menuItems.push({
+        label: "Rename Page",
+        icon: <Pencil className="w-4 h-4" />,
+        action: () => { onRename?.(target); onClose(); },
+        divider: true,
+      });
+      menuItems.push({
+        label: "Delete Page",
+        icon: <Trash2 className="w-4 h-4" />,
+        action: () => { onDelete?.(target); onClose(); },
+        danger: true,
+      });
+    }
   }
 
   // Adjust position to keep menu in viewport

@@ -5,7 +5,7 @@ import aiofiles
 from datetime import datetime
 
 from app.core.config import settings
-from app.core.security import get_current_user
+from app.core.security import require_write_access
 from app.models.user import User
 
 router = APIRouter()
@@ -16,7 +16,7 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".pdf", 
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     # Validate file
     if not file.filename:
@@ -64,7 +64,7 @@ async def upload_file(
 @router.delete("/{path:path}")
 async def delete_file(
     path: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access),
 ):
     full_path = os.path.join(settings.UPLOAD_DIR, path)
     

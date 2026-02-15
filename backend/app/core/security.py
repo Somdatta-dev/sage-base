@@ -86,3 +86,15 @@ async def get_current_admin_user(
             detail="Admin access required",
         )
     return current_user
+
+
+async def require_write_access(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Reject viewer-role users from write operations."""
+    if current_user.role == "viewer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Viewers have read-only access",
+        )
+    return current_user
