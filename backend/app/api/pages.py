@@ -286,6 +286,10 @@ async def update_page(
     if "content_json" in update_data:
         update_data["content_text"] = extract_text_from_content(update_data["content_json"])
 
+    # If a published page is edited, revert status to draft (content diverged from last publish)
+    if page.status == PageStatus.PUBLISHED.value:
+        update_data["status"] = PageStatus.DRAFT.value
+
     for field, value in update_data.items():
         setattr(page, field, value)
 

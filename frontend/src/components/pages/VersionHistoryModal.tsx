@@ -48,14 +48,14 @@ export function VersionHistoryModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-3xl h-[80vh] bg-slate-900 border border-white/10 rounded-2xl shadow-2xl animate-fade-in flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
+      <div className="relative w-full max-w-3xl max-h-[calc(100vh-2rem)] bg-slate-900 border border-white/10 rounded-2xl shadow-2xl animate-fade-in flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-white/10 flex-shrink-0">
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
             <Clock className="w-5 h-5 text-sage-400" />
             Version History
@@ -68,9 +68,9 @@ export function VersionHistoryModal({
           </button>
         </div>
 
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Version List */}
-          <div className="w-72 border-r border-white/10 overflow-y-auto">
+          <div className="w-72 flex-shrink-0 border-r border-white/10 overflow-y-auto">
             <div className="p-4">
               {/* Current Version */}
               <div className="mb-4">
@@ -182,8 +182,8 @@ export function VersionHistoryModal({
                   )}
                 </div>
 
-                <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                  <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-4 max-h-[40vh] overflow-y-auto">
+                  <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono break-words">
                     {JSON.stringify(selectedVersion.content_json, null, 2)}
                   </pre>
                 </div>

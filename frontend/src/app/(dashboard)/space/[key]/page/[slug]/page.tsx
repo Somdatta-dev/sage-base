@@ -118,20 +118,21 @@ export default function PageViewPage() {
 
   const isPageOwner = user && page && page.author_id === user.id;
   const isSpaceOwner = user && space && space.owner_id === user.id;
-  const canEdit =
+  const isPrivileged = isPageOwner || isSpaceOwner || (user && user.role === "admin");
+  // Everyone can edit, but only privileged users can save directly to the page
+  const canSaveDirectly =
     user &&
-    (isPageOwner || isSpaceOwner || user.role === "admin" || page?.edit_mode === "anyone");
+    (isPrivileged || page?.edit_mode === "anyone");
+  // Whether the current user needs to go through approval to publish
+  const needsApproval = !isPrivileged && page?.edit_mode === "approval";
 
   const handleContentChange = useCallback(
     (newContent: Record<string, unknown>) => {
-      // If user can't edit, show update request modal
-      if (!canEdit) {
-        setContent(newContent);
-        setShowUpdateRequest(true);
-        return;
-      }
-
       setContent(newContent);
+
+      // Non-privileged users on approval pages edit locally only (like a branch).
+      // Their changes are submitted via the Publish → approval request flow.
+      if (!canSaveDirectly) return;
 
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
@@ -140,7 +141,7 @@ export default function PageViewPage() {
         handleSave();
       }, 2000);
     },
-    [handleSave, canEdit]
+    [handleSave, canSaveDirectly]
   );
 
   const handleRefresh = async () => {
@@ -152,8 +153,8 @@ export default function PageViewPage() {
       saveTimeoutRef.current = null;
     }
 
-    // Save current content before refreshing to avoid data loss
-    if (contentRef.current) {
+    // Save current content before refreshing to avoid data loss (only for privileged users)
+    if (canSaveDirectly && contentRef.current) {
       try {
         await pagesApi.update(page.id, {
           title: titleRef.current,
@@ -280,7 +281,11 @@ export default function PageViewPage() {
             </span>
           )}
 
-          {saving ? (
+          {needsApproval ? (
+            <span className="text-xs text-orange-400/80 px-2">
+              Editing locally
+            </span>
+          ) : saving ? (
             <span className="text-xs text-[#9b9b9b] flex items-center gap-1.5 px-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               Saving...
@@ -317,6 +322,8 @@ export default function PageViewPage() {
             pageId={page.id}
             status={page.status}
             onPublish={handleRefresh}
+            needsApproval={!!needsApproval}
+            onRequestApproval={() => setShowUpdateRequest(true)}
           />
 
           {/* Page Settings (owner only) */}
@@ -328,14 +335,16 @@ export default function PageViewPage() {
             />
           )}
 
-          <button
-            onClick={handleSave}
-            disabled={saving || !canEdit}
-            className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#2383e2] hover:bg-[#1a6fc2] text-white rounded transition-colors disabled:opacity-50"
-          >
-            <Save className="w-3.5 h-3.5" />
-            Save
-          </button>
+          {canSaveDirectly && (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#2383e2] hover:bg-[#1a6fc2] text-white rounded transition-colors disabled:opacity-50"
+            >
+              <Save className="w-3.5 h-3.5" />
+              Save
+            </button>
+          )}
 
           <div className="relative">
             <button

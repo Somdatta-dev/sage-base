@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { pagesApi } from "@/lib/api";
 import { toast } from "sonner";
 import type { VersionDiff } from "@/types";
@@ -89,8 +88,8 @@ export function DiffViewer({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[900px] max-h-[80vh]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[900px] max-h-[80vh] flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>
             Comparing Version {fromVersion} → {toVersion}
           </DialogTitle>
@@ -111,7 +110,7 @@ export function DiffViewer({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[500px]">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {loading ? (
             <div className="text-center py-8 text-[#9b9b9b]">Loading diff...</div>
           ) : diff ? (
@@ -121,7 +120,7 @@ export function DiffViewer({
           ) : (
             <div className="text-center py-8 text-[#9b9b9b]">No changes found</div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

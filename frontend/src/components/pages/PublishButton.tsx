@@ -18,9 +18,19 @@ interface PublishButtonProps {
   pageId: number;
   status: PageStatus;
   onPublish: () => void;
+  /** When true, Publish triggers an approval request instead of direct publish */
+  needsApproval?: boolean;
+  /** Called when a non-privileged user clicks Publish on an approval page */
+  onRequestApproval?: () => void;
 }
 
-export function PublishButton({ pageId, status, onPublish }: PublishButtonProps) {
+export function PublishButton({
+  pageId,
+  status,
+  onPublish,
+  needsApproval,
+  onRequestApproval,
+}: PublishButtonProps) {
   const [showDialog, setShowDialog] = useState(false);
   const [changeSummary, setChangeSummary] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
@@ -50,7 +60,15 @@ export function PublishButton({ pageId, status, onPublish }: PublishButtonProps)
     }
   };
 
-  if (status === "published") {
+  const handleClick = () => {
+    if (needsApproval) {
+      onRequestApproval?.();
+    } else {
+      setShowDialog(true);
+    }
+  };
+
+  if (status === "published" && !needsApproval) {
     return (
       <button
         onClick={handleUnpublish}
@@ -64,10 +82,14 @@ export function PublishButton({ pageId, status, onPublish }: PublishButtonProps)
   return (
     <>
       <button
-        onClick={() => setShowDialog(true)}
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+        onClick={handleClick}
+        className={`flex items-center gap-1.5 px-2.5 py-1 text-xs text-white rounded transition-colors ${
+          needsApproval
+            ? "bg-orange-600 hover:bg-orange-700"
+            : "bg-blue-600 hover:bg-blue-700"
+        }`}
       >
-        Publish
+        {needsApproval ? "Submit for Approval" : "Publish"}
       </button>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -82,7 +104,7 @@ export function PublishButton({ pageId, status, onPublish }: PublishButtonProps)
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <label htmlFor="summary" className="block text-sm font-medium text-gray-300 mb-2">
-                Change Summary <span className="text-gray-500">(optional)</span>
+                Change Summary <span className="text-[#9b9b9b]">(optional)</span>
               </label>
               <textarea
                 id="summary"
